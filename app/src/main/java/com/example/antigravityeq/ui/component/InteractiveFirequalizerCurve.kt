@@ -1,0 +1,372 @@
+﻿package com.example.antigravityeq.ui.component
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.antigravityeq.data.EqualizerSettings
+import kotlin.math.log10
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.pow
+import kotlin.math.roundToInt
+
+private const val MIN_FREQ = 20.0
+private const val MAX_FREQ = 20000.0
+private const val MIN_DB = -12f
+private const val MAX_DB = 12f
+
+@Composable
+fun InteractiveFirequalizerCurve(
+    bandLevels: List<Int>,
+    onBandLevelsChange: (List<Int>) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val textMeasurer = rememberTextMeasurer()
+    val frequencies = EqualizerSettings.EQ_FREQUENCIES
+    var selectedNodeIndex by remember { mutableStateOf<Int?>(null) }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(230.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFF0F1016))
+                .pointerInput(bandLevels) {
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            val width = size.width.toFloat()
+                            val height = size.height.toFloat()
+                            
+                            var closestIdx: Int? = null
+                            var minDistance = 50f
+                            
+                            frequencies.forEachIndexed { idx, freq ->
+                                val nodeX = freqToX(freq.toDouble(), width)
+                                val gain = bandLevels.getOrElse(idx) { 0 }.toFloat().coerceIn(MIN_DB, MAX_DB)
+                                val nodeY = dbToY(gain, height)
+                                
+                                val distance = (offset.x - nodeX).let { dx -> (offset.y - nodeY).let { dy -> kotlin.math.sqrt(dx * dx + dy * dy) } }
+                                if (distance < minDistance) {
+                                    minDistance = distance
+                                    closestIdx = idx
+                                }
+                            }
+                            
+                            selectedNodeIndex = closestIdx
+                            
+                            if (closestIdx == null) {
+                                val touchFreq = xToFreq(offset.x, width)
+                                val nearestBand = findNearestBandIndex(touchFreq, frequencies)
+                                val newDb = yToDb(offset.y, height).roundToInt().coerceIn(-12, 12)
+                                val updated = bandLevels.toMutableList()
+                                updated[nearestBand] = newDb
+                                onBandLevelsChange(updated)
+                            }
+                        },
+                        onDrag = { change, _ ->
+                            change.consume()
+                            val width = size.width.toFloat()
+                            val height = size.height.toFloat()
+                            val targetDb = yToDb(change.position.y, height).roundToInt().coerceIn(-12, 12)
+                            
+                            val updated = bandLevels.toMutableList()
+                            if (selectedNodeIndex != null) {
+                                updated[selectedNodeIndex!!] = targetDb
+                            } else {
+                                val currentFreq = xToFreq(change.position.x, width)
+                                val nearestBand = findNearestBandIndex(currentFreq, frequencies)
+                                updated[nearestBand] = targetDb
+                            }
+                            onBandLevelsChange(updated)
+                        },
+                        onDragEnd = {
+                            selectedNodeIndex = null
+                        },
+                        onDragCancel = {
+                            selectedNodeIndex = null
+                        }
+                    )
+                }
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val canvasWidth = size.width
+                val canvasHeight = size.height
+                
+                val dbGuidelines = listOf(12f, 6f, 0f, -6f, -12f)
+                dbGuidelines.forEach { db ->
+                    val y = dbToY(db, canvasHeight)
+                    val isZero = db == 0f
+                    
+                    drawLine(
+                        color = if (isZero) Color(0xFF00E5FF).copy(alpha = 0.35f) else Color(0xFF232838),
+                        start = Offset(0f, y),
+                        end = Offset(canvasWidth, y),
+                        strokeWidth = if (isZero) 1.5f else 1f
+                    )
+                    
+                    val label = if (db > 0) "+${db.toInt()}dB" else "${db.toInt()}dB"
+                    drawText(
+                        textMeasurer = textMeasurer,
+                        text = label,
+                        style = TextStyle(
+                            color = if (isZero) Color(0xFF00E5FF).copy(alpha = 0.7f) else Color(0xFF6B7280),
+                            fontSize = 9.sp
+                        ),
+                        topLeft = Offset(8f, y - 14f)
+                    )
+                }
+                
+                val gridFreqs = listOf(50.0, 100.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0, 16000.0)
+                gridFreqs.forEach { freq ->
+                    val x = freqToX(freq, canvasWidth)
+                    drawLine(
+                        color = Color(0xFF1C202E),
+                        start = Offset(x, 0f),
+                        end = Offset(x, canvasHeight),
+                        strokeWidth = 1f
+                    )
+                }
+                
+                val points = mutableListOf<Offset>()
+                val firstGain = bandLevels.firstOrNull()?.toFloat()?.coerceIn(MIN_DB, MAX_DB) ?: 0f
+                points.add(Offset(0f, dbToY(firstGain, canvasHeight)))
+                
+                frequencies.forEachIndexed { idx, freq ->
+                    val gain = bandLevels.getOrElse(idx) { 0 }.toFloat().coerceIn(MIN_DB, MAX_DB)
+                    val x = freqToX(freq.toDouble(), canvasWidth)
+                    val y = dbToY(gain, canvasHeight)
+                    points.add(Offset(x, y))
+                }
+                
+                val lastGain = bandLevels.lastOrNull()?.toFloat()?.coerceIn(MIN_DB, MAX_DB) ?: 0f
+                points.add(Offset(canvasWidth, dbToY(lastGain, canvasHeight)))
+                
+                val splineCurvePath = Path()
+                val fillPath = Path()
+                
+                if (points.isNotEmpty()) {
+                    val sampledSpline = computeCatmullRomSpline(points, steps = 16)
+                    if (sampledSpline.isNotEmpty()) {
+                        splineCurvePath.moveTo(sampledSpline[0].x, sampledSpline[0].y)
+                        fillPath.moveTo(sampledSpline[0].x, canvasHeight)
+                        fillPath.lineTo(sampledSpline[0].x, sampledSpline[0].y)
+                        
+                        for (i in 1 until sampledSpline.size) {
+                            splineCurvePath.lineTo(sampledSpline[i].x, sampledSpline[i].y)
+                            fillPath.lineTo(sampledSpline[i].x, sampledSpline[i].y)
+                        }
+                        
+                        fillPath.lineTo(canvasWidth, canvasHeight)
+                        fillPath.close()
+                    }
+                }
+                
+                drawPath(
+                    path = fillPath,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF00E5FF).copy(alpha = 0.28f),
+                            Color(0xFF00E5FF).copy(alpha = 0.08f),
+                            Color.Transparent
+                        ),
+                        startY = 0f,
+                        endY = canvasHeight
+                    )
+                )
+                
+                drawPath(
+                    path = splineCurvePath,
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0xFF00B0FF),
+                            Color(0xFF00E5FF),
+                            Color(0xFF69F0AE)
+                        )
+                    ),
+                    style = Stroke(
+                        width = 3.5f,
+                        cap = StrokeCap.Round
+                    )
+                )
+                
+                val labels = listOf("31", "62", "125", "250", "500", "1k", "2k", "4k", "8k", "16k")
+                frequencies.forEachIndexed { idx, freq ->
+                    val gain = bandLevels.getOrElse(idx) { 0 }.toFloat().coerceIn(MIN_DB, MAX_DB)
+                    val x = freqToX(freq.toDouble(), canvasWidth)
+                    val y = dbToY(gain, canvasHeight)
+                    val isSelected = selectedNodeIndex == idx
+                    
+                    if (isSelected) {
+                        drawCircle(
+                            color = Color(0xFF00E5FF).copy(alpha = 0.35f),
+                            radius = 16f,
+                            center = Offset(x, y)
+                        )
+                    }
+                    
+                    drawCircle(
+                        color = if (isSelected) Color(0xFF00E5FF) else Color(0xFF1E2433),
+                        radius = 8f,
+                        center = Offset(x, y)
+                    )
+                    
+                    drawCircle(
+                        color = if (isSelected) Color.White else Color(0xFF00E5FF),
+                        radius = 4.5f,
+                        center = Offset(x, y)
+                    )
+                    
+                    val valueLabel = if (gain > 0) "+${gain.toInt()}" else "${gain.toInt()}"
+                    drawText(
+                        textMeasurer = textMeasurer,
+                        text = valueLabel,
+                        style = TextStyle(
+                            color = if (isSelected) Color(0xFF00E5FF) else Color(0xFFEDF1F8),
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        topLeft = Offset(x - 8f, y - 22f)
+                    )
+                    
+                    drawText(
+                        textMeasurer = textMeasurer,
+                        text = labels.getOrElse(idx) { "" },
+                        style = TextStyle(
+                            color = if (isSelected) Color(0xFF00E5FF) else Color(0xFF8B95A5),
+                            fontSize = 9.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        ),
+                        topLeft = Offset(x - 8f, canvasHeight - 18f)
+                    )
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(10.dp))
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Touch & drag nodes to sculpt response curve",
+                color = Color(0xFF8B95A5),
+                fontSize = 12.sp
+            )
+            
+            TextButton(
+                onClick = {
+                    onBandLevelsChange(List(10) { 0 })
+                },
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = Color(0xFF00E5FF)
+                )
+            ) {
+                Text(
+                    text = "Reset Flat (0 dB)",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+private fun freqToX(freq: Double, width: Float): Float {
+    val minLog = log10(MIN_FREQ)
+    val maxLog = log10(MAX_FREQ)
+    val currentLog = log10(freq.coerceIn(MIN_FREQ, MAX_FREQ))
+    return (((currentLog - minLog) / (maxLog - minLog)) * width).toFloat()
+}
+
+private fun xToFreq(x: Float, width: Float): Double {
+    val norm = (x / width).coerceIn(0f, 1f).toDouble()
+    val minLog = log10(MIN_FREQ)
+    val maxLog = log10(MAX_FREQ)
+    return 10.0.pow(minLog + norm * (maxLog - minLog))
+}
+
+private fun dbToY(db: Float, height: Float): Float {
+    val padding = 24f
+    val effectiveHeight = height - (padding * 2)
+    val norm = (db - MIN_DB) / (MAX_DB - MIN_DB)
+    return height - padding - (norm * effectiveHeight)
+}
+
+private fun yToDb(y: Float, height: Float): Float {
+    val padding = 24f
+    val effectiveHeight = height - (padding * 2)
+    val norm = 1f - ((y - padding) / effectiveHeight).coerceIn(0f, 1f)
+    return MIN_DB + norm * (MAX_DB - MIN_DB)
+}
+
+private fun findNearestBandIndex(freq: Double, bands: FloatArray): Int {
+    var minDiff = Double.MAX_VALUE
+    var nearestIdx = 0
+    bands.forEachIndexed { index, bandFreq ->
+        val diff = kotlin.math.abs(log10(freq) - log10(bandFreq.toDouble()))
+        if (diff < minDiff) {
+            minDiff = diff
+            nearestIdx = index
+        }
+    }
+    return nearestIdx
+}
+
+private fun computeCatmullRomSpline(points: List<Offset>, steps: Int = 16): List<Offset> {
+    if (points.size < 2) return points
+    val result = mutableListOf<Offset>()
+    
+    val p = mutableListOf<Offset>()
+    p.add(points.first())
+    p.addAll(points)
+    p.add(points.last())
+    
+    for (i in 0 until p.size - 3) {
+        val p0 = p[i]
+        val p1 = p[i + 1]
+        val p2 = p[i + 2]
+        val p3 = p[i + 3]
+        
+        for (step in 0..steps) {
+            val t = step.toFloat() / steps
+            val t2 = t * t
+            val t3 = t2 * t
+            
+            val x = 0.5f * ((2f * p1.x) +
+                    (-p0.x + p2.x) * t +
+                    (2f * p0.x - 5f * p1.x + 4f * p2.x - p3.x) * t2 +
+                    (-p0.x + 3f * p1.x - 3f * p2.x + p3.x) * t3)
+                    
+            val y = 0.5f * ((2f * p1.y) +
+                    (-p0.y + p2.y) * t +
+                    (2f * p0.y - 5f * p1.y + 4f * p2.y - p3.y) * t2 +
+                    (-p0.y + 3f * p1.y - 3f * p2.y + p3.y) * t3)
+                    
+            result.add(Offset(x, y))
+        }
+    }
+    return result
+}

@@ -1,0 +1,501 @@
+package com.example.antigravityeq.ui.main
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.antigravityeq.MainActivity
+import com.example.antigravityeq.data.EqualizerSettings
+import com.example.antigravityeq.ui.component.EffectCard
+import com.example.antigravityeq.ui.component.InteractiveBassCurveGraph
+import com.example.antigravityeq.ui.component.InteractiveClarityCurveGraph
+import com.example.antigravityeq.ui.component.InteractiveCompressorGraph
+import com.example.antigravityeq.ui.component.InteractiveFirequalizerCurve
+import com.example.antigravityeq.ui.component.ValuePicker
+import com.example.antigravityeq.ui.component.ValueSlider
+
+val BgColor = Color(0xFF12131A)
+val CardColor = Color(0xFF1A1C24)
+val AccentColor = Color(0xFF00E5FF)
+val TextColor = Color(0xFFEDF1F8)
+val MutedTextColor = Color(0xFF9AA5B8)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainScreen(
+    modifier: Modifier = Modifier,
+    viewModel: MainScreenViewModel = viewModel()
+) {
+    val settings by viewModel.uiState.collectAsStateWithLifecycle()
+    val isCapturing by MainActivity.isCaptureRunning
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = BgColor,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text("ViPER4Android FX", color = AccentColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("v2.7.0 Studio Suite", color = MutedTextColor, fontSize = 11.sp)
+                    }
+                },
+                actions = {
+                    Switch(
+                        checked = settings.isEnabled,
+                        onCheckedChange = { viewModel.updateSettings { s -> s.copy(isEnabled = it) } }
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = BgColor)
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Master Stream Catch Card
+            EffectCard(
+                badgeText = "SYS",
+                name = "Audio Stream Catch",
+                enabled = isCapturing,
+                onEnabledChange = {
+                    if (it) {
+                        MainActivity.triggerCaptureLauncher?.invoke()
+                    } else {
+                        MainActivity.stopCaptureService?.invoke()
+                    }
+                }
+            ) {
+                Text(
+                    text = if (isCapturing) "Actively processing audio stream" else "Stream capture is inactive",
+                    color = MutedTextColor,
+                    fontSize = 14.sp
+                )
+            }
+
+            // Master Limiter
+            EffectCard(
+                badgeText = "OUT",
+                name = "Master limiter",
+                enabled = null,
+                onEnabledChange = null
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ValueSlider(
+                        title = "Output gain",
+                        summary = "${settings.outputGain} dB",
+                        summaryUnit = "dB",
+                        value = settings.outputGain,
+                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(outputGain = v) } },
+                        valueRange = -20..6
+                    )
+                    ValueSlider(
+                        title = "Output pan",
+                        summary = "${settings.channelPan}",
+                        value = settings.channelPan,
+                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(channelPan = v) } },
+                        valueRange = -100..100
+                    )
+                    ValueSlider(
+                        title = "Threshold limit",
+                        summary = "${settings.limiterThreshold} dB",
+                        summaryUnit = "dB",
+                        value = settings.limiterThreshold,
+                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(limiterThreshold = v) } },
+                        valueRange = -3..0
+                    )
+                }
+            }
+
+            // Playback Gain Control
+            EffectCard(
+                badgeText = "AGC",
+                name = "Playback gain control",
+                enabled = settings.isPlaybackAgcEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isPlaybackAgcEnabled = it) } }
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ValuePicker(
+                        title = "Ratio",
+                        values = arrayOf("Slight", "Moderate", "Extreme"),
+                        selectedIndex = settings.playbackAgcRatio,
+                        onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(playbackAgcRatio = idx) } }
+                    )
+                    ValueSlider(
+                        title = "Max gain",
+                        summary = "${settings.playbackAgcMaxGain}x",
+                        value = settings.playbackAgcMaxGain,
+                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(playbackAgcMaxGain = v) } },
+                        valueRange = 0..18
+                    )
+                }
+            }
+
+            // FET Compressor
+            EffectCard(
+                badgeText = "FET",
+                name = "FET compressor",
+                enabled = settings.isFetCompressorEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isFetCompressorEnabled = it) } }
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    InteractiveCompressorGraph(
+                        thresholdDb = settings.fetThreshold,
+                        ratio = settings.fetRatio,
+                        makeupGainDb = settings.fetGain,
+                        onThresholdChange = { th -> viewModel.updateSettings { s -> s.copy(fetThreshold = th) } },
+                        onRatioChange = { rt -> viewModel.updateSettings { s -> s.copy(fetRatio = rt) } }
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    ValueSlider(
+                        title = "Makeup gain",
+                        summary = "+${settings.fetGain} dB",
+                        value = settings.fetGain,
+                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(fetGain = v) } },
+                        valueRange = 0..18
+                    )
+                }
+            }
+
+            // ViPER-DDC
+            EffectCard(
+                badgeText = "DDC",
+                name = "ViPER-DDC",
+                enabled = settings.isDdcEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isDdcEnabled = it) } }
+            ) {
+                ValuePicker(
+                    title = "Preset",
+                    values = EqualizerSettings.DDC_PRESET_NAMES.toTypedArray(),
+                    selectedIndex = settings.ddcPreset,
+                    onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(ddcPreset = idx) } }
+                )
+            }
+
+            // Spectrum Extension
+            EffectCard(
+                badgeText = "VSE",
+                name = "Spectrum extension",
+                enabled = settings.isSpectrumExtensionEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isSpectrumExtensionEnabled = it) } }
+            ) {
+                ValueSlider(
+                    title = "Strength",
+                    summary = "${settings.spectrumExtensionStrength}",
+                    value = settings.spectrumExtensionStrength,
+                    onValueChange = { v -> viewModel.updateSettings { s -> s.copy(spectrumExtensionStrength = v) } },
+                    valueRange = 0..4
+                )
+            }
+
+            // FIR Equalizer
+            EffectCard(
+                badgeText = "EQ",
+                name = "FIR equalizer",
+                enabled = settings.isEqEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isEqEnabled = it) } }
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    ValuePicker(
+                        title = "Preset",
+                        values = EqualizerSettings.EQ_PRESET_NAMES.toTypedArray(),
+                        selectedIndex = settings.eqPreset,
+                        onSelectedIndexChange = { idx ->
+                            val presetValues = EqualizerSettings.EQ_PRESET_VALUES.getOrElse(idx) { List(10) { 0 } }
+                            viewModel.updateSettings { s ->
+                                s.copy(
+                                    eqPreset = idx,
+                                    bandLevels = presetValues
+                                )
+                            }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    InteractiveFirequalizerCurve(
+                        bandLevels = settings.bandLevels,
+                        onBandLevelsChange = { updatedLevels ->
+                            viewModel.updateSettings { s ->
+                                s.copy(
+                                    bandLevels = updatedLevels,
+                                    eqPreset = 0 // Custom
+                                )
+                            }
+                        }
+                    )
+                }
+            }
+
+            // Convolver
+            EffectCard(
+                badgeText = "IRS",
+                name = "Convolver",
+                enabled = settings.isConvolverEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isConvolverEnabled = it) } }
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ValuePicker(
+                        title = "Impulse Response",
+                        values = EqualizerSettings.CONVOLVER_PRESET_NAMES.toTypedArray(),
+                        selectedIndex = settings.convolverPreset,
+                        onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(convolverPreset = idx) } }
+                    )
+                    ValueSlider(
+                        title = "Cross channel",
+                        summary = "${settings.convolverCrossChannel}%",
+                        value = settings.convolverCrossChannel,
+                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(convolverCrossChannel = v) } },
+                        valueRange = 0..100
+                    )
+                }
+            }
+
+            // Field Surround
+            EffectCard(
+                badgeText = "FS",
+                name = "Field surround",
+                enabled = settings.isFieldSurroundEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isFieldSurroundEnabled = it) } }
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ValueSlider(
+                        title = "Surround strength",
+                        summary = "${settings.fieldSurroundStrength}",
+                        value = settings.fieldSurroundStrength,
+                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(fieldSurroundStrength = v) } },
+                        valueRange = 0..100
+                    )
+                    ValueSlider(
+                        title = "Mid image strength",
+                        summary = "${settings.midImageSize}",
+                        value = settings.midImageSize,
+                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(midImageSize = v) } },
+                        valueRange = 0..100
+                    )
+                }
+            }
+
+            // Differential Surround
+            EffectCard(
+                badgeText = "DS",
+                name = "Differential surround",
+                enabled = settings.isDiffSurroundEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isDiffSurroundEnabled = it) } }
+            ) {
+                ValueSlider(
+                    title = "Delay",
+                    summary = "${settings.diffSurroundDelay} ms",
+                    value = settings.diffSurroundDelay,
+                    onValueChange = { v -> viewModel.updateSettings { s -> s.copy(diffSurroundDelay = v) } },
+                    valueRange = 0..20
+                )
+            }
+
+            // Headphone Surround+
+            EffectCard(
+                badgeText = "VHE",
+                name = "Headphone surround+",
+                enabled = settings.isHeadphoneSurroundEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isHeadphoneSurroundEnabled = it) } }
+            ) {
+                ValueSlider(
+                    title = "Effect level",
+                    summary = "${settings.headphoneSurroundLevel}",
+                    value = settings.headphoneSurroundLevel,
+                    onValueChange = { v -> viewModel.updateSettings { s -> s.copy(headphoneSurroundLevel = v) } },
+                    valueRange = 0..5
+                )
+            }
+
+            // Reverberation
+            EffectCard(
+                badgeText = "REV",
+                name = "Reverberation",
+                enabled = settings.isReverbEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isReverbEnabled = it) } }
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ValueSlider(
+                        title = "Room size",
+                        summary = "${settings.reverbRoomSize} m²",
+                        value = settings.reverbRoomSize,
+                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(reverbRoomSize = v) } },
+                        valueRange = 25..500
+                    )
+                    ValueSlider(
+                        title = "Wet ratio",
+                        summary = "${settings.reverbWetRatio}%",
+                        value = settings.reverbWetRatio,
+                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(reverbWetRatio = v) } },
+                        valueRange = 0..100
+                    )
+                }
+            }
+
+            // Dynamic System
+            EffectCard(
+                badgeText = "DYN",
+                name = "Dynamic system",
+                enabled = settings.isDynamicSystemEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isDynamicSystemEnabled = it) } }
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ValuePicker(
+                        title = "Listening device",
+                        values = EqualizerSettings.DYNAMIC_DEVICE_NAMES.toTypedArray(),
+                        selectedIndex = settings.dynamicDevice,
+                        onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(dynamicDevice = idx) } }
+                    )
+                    ValueSlider(
+                        title = "Dynamic bass",
+                        summary = "${settings.dynamicBassStrength}",
+                        value = settings.dynamicBassStrength,
+                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(dynamicBassStrength = v) } },
+                        valueRange = 0..30
+                    )
+                }
+            }
+
+            // Tube Simulator
+            EffectCard(
+                badgeText = "TUBE",
+                name = "Tube simulator (6N1P)",
+                enabled = settings.isTubeEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isTubeEnabled = it) } }
+            ) {
+                ValueSlider(
+                    title = "Tube warmth",
+                    summary = "${settings.tubeWarmth / 10}%",
+                    value = settings.tubeWarmth,
+                    onValueChange = { v -> viewModel.updateSettings { s -> s.copy(tubeWarmth = v) } },
+                    valueRange = 0..1000
+                )
+            }
+
+            // ViPER Bass
+            EffectCard(
+                badgeText = "BASS",
+                name = "ViPER bass",
+                enabled = settings.isBassEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isBassEnabled = it) } }
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    ValuePicker(
+                        title = "Bass mode",
+                        values = arrayOf("Natural bass", "Pure bass +", "Subwoofer"),
+                        selectedIndex = settings.viperBassMode,
+                        onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(viperBassMode = idx) } }
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    InteractiveBassCurveGraph(
+                        frequencyHz = settings.bassFrequency,
+                        gainBoost = settings.bassBoost,
+                        mode = settings.viperBassMode,
+                        onFrequencyChange = { f -> viewModel.updateSettings { s -> s.copy(bassFrequency = f) } },
+                        onGainChange = { g -> viewModel.updateSettings { s -> s.copy(bassBoost = g) } }
+                    )
+                }
+            }
+
+            // ViPER Clarity
+            EffectCard(
+                badgeText = "CLR",
+                name = "ViPER clarity",
+                enabled = settings.isClarityEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isClarityEnabled = it) } }
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    ValuePicker(
+                        title = "Clarity mode",
+                        values = arrayOf("Natural", "Ozone+", "XHiFi"),
+                        selectedIndex = settings.clarityMode,
+                        onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(clarityMode = idx) } }
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    InteractiveClarityCurveGraph(
+                        clarityGain = settings.clarity,
+                        mode = settings.clarityMode,
+                        onGainChange = { g -> viewModel.updateSettings { s -> s.copy(clarity = g) } }
+                    )
+                }
+            }
+
+            // Auditory System Protection
+            EffectCard(
+                badgeText = "CURE",
+                name = "Auditory system protection",
+                enabled = settings.isAuditoryProtectionEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isAuditoryProtectionEnabled = it) } }
+            ) {
+                Text(
+                    text = "Cure+ crossfeed reduces ear fatigue during extended listening sessions.",
+                    color = MutedTextColor,
+                    fontSize = 13.sp
+                )
+            }
+
+            // AnalogX
+            EffectCard(
+                badgeText = "AX",
+                name = "AnalogX",
+                enabled = settings.isAnalogXEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isAnalogXEnabled = it) } }
+            ) {
+                ValuePicker(
+                    title = "Mode level",
+                    values = arrayOf("Level 1 (Subtle)", "Level 2 (Moderate)", "Level 3 (Extreme)"),
+                    selectedIndex = settings.analogXLevel.coerceIn(0, 2),
+                    onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(analogXLevel = idx) } }
+                )
+            }
+
+            // Speaker Optimization
+            EffectCard(
+                badgeText = "SPK",
+                name = "Speaker optimization",
+                enabled = settings.isSpeakerOptEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isSpeakerOptEnabled = it) } }
+            ) {
+                Text(
+                    text = "Acoustic correction profile optimized for device external speakers.",
+                    color = MutedTextColor,
+                    fontSize = 13.sp
+                )
+            }
+        }
+    }
+}

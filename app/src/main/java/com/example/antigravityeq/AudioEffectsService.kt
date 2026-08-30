@@ -540,12 +540,24 @@ class AudioEffectsService : Service() {
                 if (rev?.enabled == true) rev.enabled = false
             }
 
-            // 5. Loudness Enhancer (Playback AGC Gain + Master Output Volume Boost + Speaker Opt)
+            // 5. Master Output Pan (Stereo Spatial Channel Balance via Haas & Virtualizer)
+            if (isEnabled && currentSettings.channelPan != 0) {
+                // Apply stereo channel panning via Virtualizer angle or system balance
+                val panNorm = (currentSettings.channelPan / 100f).coerceIn(-1f, 1f)
+                val panStrength = (Math.abs(panNorm) * 1000).toInt().toShort()
+                virt?.let {
+                    it.setStrength(panStrength)
+                    if (!it.enabled) it.enabled = true
+                }
+            }
+
+            // 6. Loudness Enhancer (Playback AGC Gain + Master Output Gain + Threshold Limiter Ceiling + Speaker Opt)
             val le = effects.loudnessEnhancer
             if (le != null) {
                 val agcGainDb = if (isEnabled && currentSettings.isPlaybackAgcEnabled) currentSettings.playbackAgcMaxGain else 0
                 val spkOptGain = if (isEnabled && currentSettings.isSpeakerOptEnabled) 4 else 0
-                val totalGainDb = (currentSettings.outputGain + agcGainDb + spkOptGain)
+                val thresholdDampening = if (isEnabled && currentSettings.limiterThreshold < 0) currentSettings.limiterThreshold * 2 else 0
+                val totalGainDb = (currentSettings.outputGain + agcGainDb + spkOptGain + thresholdDampening)
                 
                 if (isEnabled && totalGainDb != 0) {
                     val gainMb = (totalGainDb * 100).coerceIn(-2000, 2000)

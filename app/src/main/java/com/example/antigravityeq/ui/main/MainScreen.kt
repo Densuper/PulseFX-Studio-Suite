@@ -300,12 +300,12 @@ fun MainScreen(
                 }
             }
 
-            // Master Limiter (Original #1)
+            // Master Limiter (Original #1 with Dedicated Module Toggle Switch)
             EffectCard(
                 badgeText = "OUT",
                 name = "Master limiter",
-                enabled = null,
-                onEnabledChange = null
+                enabled = settings.isLimiterEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isLimiterEnabled = it) } }
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),

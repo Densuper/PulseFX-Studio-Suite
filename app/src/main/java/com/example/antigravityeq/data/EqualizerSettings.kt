@@ -64,6 +64,7 @@ data class EqualizerSettings(
     val tubeWarmth: Int = 350, // 0 to 1000 (Warm triode even harmonics)
 
     // Master Gate (Output Gain, Pan & True-Peak Limiter)
+    val isLimiterEnabled: Boolean = false,
     val outputGain: Int = 0, // -20dB to +6dB
     val channelPan: Int = 0, // -100 (Left) to +100 (Right)
     val limiterThreshold: Int = -1, // -0.1dB to -3.0dB ceiling
@@ -234,6 +235,7 @@ data class EqualizerSettings(
             val isTubeEnabled = prefs.getBoolean("v4a_tube_enabled", true)
             val tubeWarmth = prefs.getInt("v4a_tube_warmth", 350)
 
+            val isLimiterEnabled = prefs.getBoolean("v4a_limiter_enabled", false)
             val outputGain = prefs.getInt("v4a_out_gain", 0)
             val channelPan = prefs.getInt("v4a_pan", 0)
             val limiterThreshold = prefs.getInt("v4a_limiter", -1)
@@ -295,6 +297,7 @@ data class EqualizerSettings(
                 clarity = clarity,
                 isTubeEnabled = isTubeEnabled,
                 tubeWarmth = tubeWarmth,
+                isLimiterEnabled = isLimiterEnabled,
                 outputGain = outputGain,
                 channelPan = channelPan,
                 limiterThreshold = limiterThreshold,
@@ -356,6 +359,7 @@ data class EqualizerSettings(
             putInt("v4a_clarity_gain", clarity)
             putBoolean("v4a_tube_enabled", isTubeEnabled)
             putInt("v4a_tube_warmth", tubeWarmth)
+            putBoolean("v4a_limiter_enabled", isLimiterEnabled)
             putInt("v4a_out_gain", outputGain)
             putInt("v4a_pan", channelPan)
             putInt("v4a_limiter", limiterThreshold)

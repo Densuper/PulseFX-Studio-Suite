@@ -541,7 +541,7 @@ class AudioEffectsService : Service() {
             }
 
             // 5. Master Output Pan (Stereo Spatial Channel Balance via Haas & Virtualizer)
-            if (isEnabled && currentSettings.channelPan != 0) {
+            if (isEnabled && currentSettings.isLimiterEnabled && currentSettings.channelPan != 0) {
                 // Apply stereo channel panning via Virtualizer angle or system balance
                 val panNorm = (currentSettings.channelPan / 100f).coerceIn(-1f, 1f)
                 val panStrength = (Math.abs(panNorm) * 1000).toInt().toShort()
@@ -556,8 +556,9 @@ class AudioEffectsService : Service() {
             if (le != null) {
                 val agcGainDb = if (isEnabled && currentSettings.isPlaybackAgcEnabled) currentSettings.playbackAgcMaxGain else 0
                 val spkOptGain = if (isEnabled && currentSettings.isSpeakerOptEnabled) 4 else 0
-                val thresholdDampening = if (isEnabled && currentSettings.limiterThreshold < 0) currentSettings.limiterThreshold * 2 else 0
-                val totalGainDb = (currentSettings.outputGain + agcGainDb + spkOptGain + thresholdDampening)
+                val masterGainDb = if (isEnabled && currentSettings.isLimiterEnabled) currentSettings.outputGain else 0
+                val thresholdDampening = if (isEnabled && currentSettings.isLimiterEnabled && currentSettings.limiterThreshold < 0) currentSettings.limiterThreshold * 2 else 0
+                val totalGainDb = (masterGainDb + agcGainDb + spkOptGain + thresholdDampening)
                 
                 if (isEnabled && totalGainDb != 0) {
                     val gainMb = (totalGainDb * 100).coerceIn(-2000, 2000)

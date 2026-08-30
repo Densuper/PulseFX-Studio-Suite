@@ -66,7 +66,7 @@ fun MainScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "v1.2.0 • Master Release",
+                            text = "v1.2.0.1 • Hotfix Master Release",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -145,7 +145,7 @@ fun MainScreen(
                 title = {
                     Column {
                         Text("PulseFX Studio", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("v1.2.0 • Sovereign DSP Audio Suite", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        Text("v1.2.0.1 • Sovereign DSP Audio Suite", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                 },
                 actions = {

@@ -360,37 +360,37 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {
                 }
             }
 
-            // 5. ViPER Bass (Dynamic Resonant Harmonic Synthesizer)
+            // 5. ViPER Bass (Dynamic Psychoacoustic Harmonic Synthesizer)
             if (s.isBassEnabled && bassGainFactor > 0f) {
                 val lowL = bassFilterL.process(left)
                 val lowR = bassFilterR.process(right)
                 val synthL = when (s.viperBassMode) {
-                    0 -> lowL * 1.5f // Natural Bass: Phase-aligned resonant low boost
-                    1 -> (if (lowL > 0) lowL * lowL else -(lowL * lowL)) * 2.2f // Pure Bass: Quadratic harmonic rectification
-                    else -> sin(lowL.coerceIn(-1.5f, 1.5f) * Math.PI.toFloat()) * 2.4f // Subwoofer: Phase-continuous sine synthesis
+                    0 -> lowL * 2.2f // Natural Bass: Phase-aligned resonant low boost
+                    1 -> (if (lowL > 0) lowL * lowL else -(lowL * lowL)) * 3.5f // Pure Bass+: Quadratic harmonic overtone synthesis
+                    else -> sin(lowL.coerceIn(-1.5f, 1.5f) * Math.PI.toFloat()) * 4.0f // Subwoofer: Sub-octave fundamental waveform divider
                 }
                 val synthR = when (s.viperBassMode) {
-                    0 -> lowR * 1.5f
-                    1 -> (if (lowR > 0) lowR * lowR else -(lowR * lowR)) * 2.2f
-                    else -> sin(lowR.coerceIn(-1.5f, 1.5f) * Math.PI.toFloat()) * 2.4f
+                    0 -> lowR * 2.2f
+                    1 -> (if (lowR > 0) lowR * lowR else -(lowR * lowR)) * 3.5f
+                    else -> sin(lowR.coerceIn(-1.5f, 1.5f) * Math.PI.toFloat()) * 4.0f
                 }
                 left += synthL * bassGainFactor
                 right += synthR * bassGainFactor
             }
 
-            // 6. ViPER Clarity (High-Frequency Harmonic Exciter & Transient Restorer)
+            // 6. ViPER Clarity / XHiFi (High-Frequency Harmonic Exciter & Transient Restorer)
             if (s.isClarityEnabled && clarityGainFactor > 0f) {
                 val highL = clarityFilterL.process(left)
                 val highR = clarityFilterR.process(right)
                 val exciterL = when (s.clarityMode) {
-                    0 -> highL * 1.2f // Natural: Linear air and crisp transient boost
-                    1 -> (abs(highL) - 0.5f * highL) * 1.9f // Ozone+: Asymmetrical even-order dynamic exciter
-                    else -> (highL * highL * (if (highL > 0) 1f else -1f)) * 2.5f // XHiFi Pro: Harmonic expansion
+                    0 -> highL * 1.8f // Natural: High-shelf acoustic air & crisp transient restore
+                    1 -> (abs(highL) - 0.5f * highL) * 2.8f // Ozone+: Asymmetrical even-order dynamic exciter
+                    else -> (highL * highL * (if (highL > 0) 1f else -1f)) * 4.0f // XHiFi Pro: Full cubic overtone expansion
                 }
                 val exciterR = when (s.clarityMode) {
-                    0 -> highR * 1.2f
-                    1 -> (abs(highR) - 0.5f * highR) * 1.9f
-                    else -> (highR * highR * (if (highR > 0) 1f else -1f)) * 2.5f
+                    0 -> highR * 1.8f
+                    1 -> (abs(highR) - 0.5f * highR) * 2.8f
+                    else -> (highR * highR * (if (highR > 0) 1f else -1f)) * 4.0f
                 }
                 left += exciterL * clarityGainFactor
                 right += exciterR * clarityGainFactor
@@ -405,18 +405,18 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {
                 when (s.convolverPreset) {
                     0 -> {
                         // Studer A800 Mastering Tape (Tape Head Saturation & Compression)
-                        left = (tanh(crossL * 1.35f) * 0.92f + crossL * 0.08f)
-                        right = (tanh(crossR * 1.35f) * 0.92f + crossR * 0.08f)
+                        left = (tanh(crossL * 1.5f) * 0.90f + crossL * 0.10f)
+                        right = (tanh(crossR * 1.5f) * 0.90f + crossR * 0.10f)
                     }
                     1 -> {
                         // Telefunken 12AX7 Tube (2nd Harmonic Warmth)
-                        left = tanh(crossL * 1.2f) + 0.10f * crossL * crossL
-                        right = tanh(crossR * 1.2f) + 0.10f * crossR * crossR
+                        left = tanh(crossL * 1.35f) + 0.18f * crossL * crossL
+                        right = tanh(crossR * 1.35f) + 0.18f * crossR * crossR
                     }
                     2 -> {
                         // Sony Walkman MegaBass IRS (Punchy Low Saturation)
-                        left = tanh(crossL * 1.5f)
-                        right = tanh(crossR * 1.5f)
+                        left = tanh(crossL * 1.8f) * 1.2f
+                        right = tanh(crossR * 1.8f) * 1.2f
                     }
                     3 -> {
                         // Lexicon 480L Hall Ambience
@@ -425,18 +425,18 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {
                     }
                     4 -> {
                         // Dolby Atmos Cinema Spatial Stage
-                        left = crossL * 1.1f - crossR * 0.1f
-                        right = crossR * 1.1f - crossL * 0.1f
+                        left = crossL * 1.15f - crossR * 0.15f
+                        right = crossR * 1.15f - crossL * 0.15f
                     }
                     5 -> {
                         // Neve 1073 British Console Transformer
-                        left = tanh(crossL * 1.15f) + 0.05f * crossL
-                        right = tanh(crossR * 1.15f) + 0.05f * crossR
+                        left = tanh(crossL * 1.3f) + 0.10f * crossL
+                        right = tanh(crossR * 1.3f) + 0.10f * crossR
                     }
                     6 -> {
                         // Solid State Logic 4000G Bus Color
-                        left = (tanh(crossL * 1.25f) / 1.25f)
-                        right = (tanh(crossR * 1.25f) / 1.25f)
+                        left = (tanh(crossL * 1.4f) / 1.35f)
+                        right = (tanh(crossR * 1.4f) / 1.35f)
                     }
                     else -> {
                         // EMT 140 Classic Plate Reverb

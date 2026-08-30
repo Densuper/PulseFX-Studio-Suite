@@ -183,7 +183,9 @@ class AudioEffectsService : Service() {
                     currentSettings.isAnalogXEnabled ||
                     currentSettings.isAuditoryProtectionEnabled ||
                     currentSettings.isSpeakerOptEnabled ||
-                    currentSettings.isSpectrumExtensionEnabled
+                    currentSettings.isSpectrumExtensionEnabled ||
+                    currentSettings.isDynamicSystemEnabled ||
+                    currentSettings.isReverbEnabled
 
                 if (isEnabled && hasAnyHarmonicModule) {
                     val numBands = eq.numberOfBands.toInt()
@@ -226,10 +228,45 @@ class AudioEffectsService : Service() {
                             if (i in 1..4) bandGainDb += tubeBoost // Warm even-order low-mid body
                         }
 
+                        // Module: ViPER Bass Direct Low-End Band Boost (Bands 0..2: 31Hz, 62Hz, 125Hz)
+                        if (currentSettings.isBassEnabled) {
+                            val bassGain = if (currentSettings.bassBoost > 0) currentSettings.bassBoost else 600
+                            val bassMult = when (currentSettings.viperBassMode) {
+                                0 -> 8f // Natural Bass (+8dB)
+                                1 -> 12f // Pure Bass+ (+12dB)
+                                else -> 16f // Subwoofer (+16dB)
+                            }
+                            if (i <= 2) {
+                                val weight = if (i == 0) 1.0f else if (i == 1) 0.85f else 0.6f
+                                bandGainDb += (bassGain / 1000f) * bassMult * weight
+                            }
+                        }
+
                         // Module: Spectrum Extension (VSE - High Frequency Restoration)
                         if (currentSettings.isSpectrumExtensionEnabled) {
                             val strength = (currentSettings.spectrumExtensionStrength + 1) * 1.8f
                             if (i >= 7) bandGainDb += strength
+                        }
+
+                        // Module: Dynamic System Device Acoustic Modeling (Impedance & Resonance Compensation)
+                        if (currentSettings.isDynamicSystemEnabled) {
+                            val dynRatio = (currentSettings.dynamicBassStrength / 30f).coerceIn(0.2f, 1.5f)
+                            bandGainDb += when (currentSettings.dynamicDevice) {
+                                0 -> if (i <= 2) 4.0f * dynRatio else if (i in 6..8) 2.0f * dynRatio else 0f // High-End Earphone: Deep sub-extension & crisp treble
+                                1 -> if (i <= 3) 6.0f * dynRatio else if (i in 4..6) -2.0f * dynRatio else 1.5f * dynRatio // Apple EarPods: Sub-bass rescue & midrange scoop
+                                2 -> if (i <= 2) 5.0f * dynRatio else if (i >= 7) 3.0f * dynRatio else 0f // Common Earphone: Wide bass & airy top
+                                3 -> if (i in 2..5) 2.5f * dynRatio else if (i <= 1) 1.5f * dynRatio else 0f // Studio Monitor: Neutral punch & linear vocal clarity
+                                4 -> if (i <= 2) 7.0f * dynRatio else if (i >= 8) 3.5f * dynRatio else 0f // High-End Headphone: Audiophile sub-rumble & hyper-detail
+                                else -> if (i <= 2) 4.0f * dynRatio else 0f
+                            }
+                        }
+
+                        // Module: Reverberation Acoustic Space Equalization (Simulates distance & room absorption)
+                        if (currentSettings.isReverbEnabled) {
+                            val wetScale = currentSettings.reverbWetRatio / 100f
+                            val roomScale = currentSettings.reverbRoomSize / 500f
+                            if (i in 3..6) bandGainDb += (2.5f * wetScale * roomScale) // Mid diffuse reverberance
+                            if (i >= 8) bandGainDb -= (1.5f * (1f - (currentSettings.reverbDampingFactor / 100f))) // HF damping rolloff
                         }
 
                         // Module: ViPER-DDC Headphone Correction Profile
@@ -289,7 +326,8 @@ class AudioEffectsService : Service() {
                 }
                 if (isEnabled && currentSettings.isDynamicSystemEnabled) {
                     val dynStrength = if (currentSettings.dynamicBassStrength > 0) currentSettings.dynamicBassStrength else 14
-                    totalBass += (dynStrength * 35).coerceIn(0, 700)
+                    // Dynamic bass scaling from 0..30 mapped directly to 0..850 boost strength
+                    totalBass += (dynStrength * 35).coerceIn(50, 850)
                 }
 
                 if (totalBass > 0) {
@@ -301,7 +339,7 @@ class AudioEffectsService : Service() {
                 }
             }
 
-            // 3. 3D Surround Field / Virtualizer (Field Surround + Differential Surround + Headphone Surround+)
+            // 3. 3D Surround Field / Virtualizer (Field Surround + Differential Surround + Headphone Surround+ & Reverb Diffusion)
             val virt = effects.virtualizer
             if (virt != null) {
                 var totalSurround = 0
@@ -315,6 +353,10 @@ class AudioEffectsService : Service() {
                 }
                 if (isEnabled && currentSettings.isHeadphoneSurroundEnabled) {
                     totalSurround += ((currentSettings.headphoneSurroundLevel + 1) * 200).coerceIn(0, 1000)
+                }
+                if (isEnabled && currentSettings.isReverbEnabled && currentSettings.reverbWetRatio > 0) {
+                    // Feed Reverb wet ratio directly into Virtualizer spatial reflections
+                    totalSurround += (currentSettings.reverbWetRatio * 5).coerceIn(0, 500)
                 }
 
                 if (totalSurround > 0) {

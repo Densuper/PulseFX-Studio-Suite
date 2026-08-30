@@ -473,13 +473,26 @@ class AudioEffectsService : Service() {
                             }
                         }
 
+                        // Headphone Surround+ (VHE ViPER Headphone Engine Level 1..5 Stage)
+                        var vheStageDb = 0f
+                        if (currentSettings.isHeadphoneSurroundEnabled) {
+                            val vheLevel = (currentSettings.headphoneSurroundLevel + 1).coerceIn(1, 5)
+                            // Injects progressive binaural ear resonance and 3D diffuse-field curve
+                            when (i) {
+                                0, 1 -> vheStageDb += (1.0f * vheLevel) // Extended low-end boundary
+                                4, 5 -> vheStageDb += (1.2f * vheLevel) // Forward binaural vocal localization
+                                7, 8, 9 -> vheStageDb += (1.8f * vheLevel) // Diffuse field spatial depth
+                            }
+                        }
+
                         // 8. Reverberation Acoustic Space Stage
                         var reverbStageDb = 0f
                         if (currentSettings.isReverbEnabled) {
-                            val wetScale = currentSettings.reverbWetRatio / 100f
-                            val roomScale = currentSettings.reverbRoomSize / 500f
-                            if (i in 3..6) reverbStageDb += (2.0f * wetScale * roomScale)
-                            if (i >= 8) reverbStageDb -= (1.0f * (1f - (currentSettings.reverbDampingFactor / 100f)))
+                            val wetScale = (currentSettings.reverbWetRatio / 100f).coerceIn(0.1f, 1.0f)
+                            val roomScale = (currentSettings.reverbRoomSize / 100f).coerceIn(0.2f, 5.0f)
+                            // Simulates room wall reflection resonance and air absorption damping
+                            if (i in 2..6) reverbStageDb += (3.0f * wetScale * (roomScale / 2.5f))
+                            if (i >= 7) reverbStageDb += (4.0f * wetScale)
                         }
 
                         // 9. ViPER-DDC Headphone Correction Profile (Acoustic Harmonization Curves)
@@ -563,7 +576,7 @@ class AudioEffectsService : Service() {
                         // Decoupled Harmonic Summation with Headroom Protection:
                         // If a module is NOT enabled, its contribution is strictly 0.0dB.
                         // When EQ is disabled, userEqGainDb is 0.0dB, so enabling Bass Boost only boosts bands 0..2 without flattening or touching the rest.
-                        val totalCompositeGainDb = userEqGainDb + fetStageDb + surroundStageDb + diffSurroundStageDb + bassStageDb + clarityStageDb +
+                        val totalCompositeGainDb = userEqGainDb + fetStageDb + surroundStageDb + diffSurroundStageDb + vheStageDb + bassStageDb + clarityStageDb +
                             convolverStageDb + tubeStageDb + vseStageDb + dynamicStageDb +
                             reverbStageDb + ddcStageDb + analogXStageDb + protectionStageDb + speakerOptStageDb
 

@@ -305,6 +305,7 @@ class AudioEffectsService : Service() {
                     currentSettings.isSpeakerOptEnabled ||
                     currentSettings.isSpectrumExtensionEnabled ||
                     currentSettings.isDynamicSystemEnabled ||
+                    currentSettings.isFetCompressorEnabled ||
                     currentSettings.isReverbEnabled
 
                 if (isEnabled && hasAnyHarmonicModule) {
@@ -315,6 +316,13 @@ class AudioEffectsService : Service() {
                             currentSettings.bandLevels[i].toFloat()
                         } else {
                             0f
+                        }
+
+                        // FET Compressor Makeup Gain & Punch Curve Stage
+                        var fetStageDb = 0f
+                        if (currentSettings.isFetCompressorEnabled) {
+                            // Makeup gain applied across full band spectrum
+                            fetStageDb += currentSettings.fetGain.toFloat()
                         }
 
                         // 2. High-Frequency Clarity & Harmonic Overtones (Isolated High-End Stage, Bands 5..9)
@@ -435,7 +443,7 @@ class AudioEffectsService : Service() {
                         // Decoupled Harmonic Summation with Headroom Protection:
                         // If a module is NOT enabled, its contribution is strictly 0.0dB.
                         // When EQ is disabled, userEqGainDb is 0.0dB, so enabling Bass Boost only boosts bands 0..2 without flattening or touching the rest.
-                        val totalCompositeGainDb = userEqGainDb + bassStageDb + clarityStageDb +
+                        val totalCompositeGainDb = userEqGainDb + fetStageDb + bassStageDb + clarityStageDb +
                             convolverStageDb + tubeStageDb + vseStageDb + dynamicStageDb +
                             reverbStageDb + ddcStageDb + analogXStageDb + protectionStageDb + speakerOptStageDb
 

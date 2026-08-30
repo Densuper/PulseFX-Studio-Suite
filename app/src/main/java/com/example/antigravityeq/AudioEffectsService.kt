@@ -402,17 +402,18 @@ class AudioEffectsService : Service() {
                             }
                         }
 
-                        // 4. Analog Tube Simulator (6N1P / 12AX7 Dual-Triode Warmth & Harmonic Saturation Stage)
+                        // 4. Analog Tube Simulator (6N1P / 12AX7 Dual-Triode Warmth & High-Gain Harmonic Saturation Stage)
                         var tubeStageDb = 0f
                         if (currentSettings.isTubeEnabled) {
                             val warmth = if (currentSettings.tubeWarmth > 0) currentSettings.tubeWarmth else 500
                             val warmthNorm = (warmth / 1000f).coerceIn(0.1f, 1.0f)
-                            // Injects rich 2nd-order even harmonic body and sweet analog roll-off
+                            // Massive 2nd-order even harmonic tube saturation & thick analog body
                             when (i) {
-                                0 -> tubeStageDb += (3.5f * warmthNorm)  // 31Hz Sub-chassis resonance
-                                1, 2 -> tubeStageDb += (7.5f * warmthNorm) // 62Hz-125Hz Rich 2nd harmonic tube bloom
-                                3, 4 -> tubeStageDb += (5.0f * warmthNorm) // 250Hz-500Hz Warm vocal body
-                                8, 9 -> tubeStageDb += (2.5f * warmthNorm) // 8kHz-16kHz Silky triode saturation
+                                0 -> tubeStageDb += (6.0f * warmthNorm)   // 31Hz Deep chassis sub-resonance
+                                1, 2 -> tubeStageDb += (14.0f * warmthNorm) // 62Hz-125Hz Massive 2nd harmonic tube bloom
+                                3, 4 -> tubeStageDb += (9.5f * warmthNorm)  // 250Hz-500Hz Thick vintage vocal body
+                                5, 6 -> tubeStageDb += (4.0f * warmthNorm)  // 1kHz-2kHz Analog midrange warmth
+                                8, 9 -> tubeStageDb += (4.5f * warmthNorm)  // 8kHz-16kHz Silky triode sparkle
                             }
                         }
 

@@ -485,14 +485,20 @@ class AudioEffectsService : Service() {
                             }
                         }
 
-                        // 8. Reverberation Acoustic Space Stage
+                        // 8. Reverberation Acoustic Space Stage (Massive Studio Hall / Cathedral Echo Reflections)
                         var reverbStageDb = 0f
                         if (currentSettings.isReverbEnabled) {
                             val wetScale = (currentSettings.reverbWetRatio / 100f).coerceIn(0.1f, 1.0f)
                             val roomScale = (currentSettings.reverbRoomSize / 100f).coerceIn(0.2f, 5.0f)
-                            // Simulates room wall reflection resonance and air absorption damping
-                            if (i in 2..6) reverbStageDb += (3.0f * wetScale * (roomScale / 2.5f))
-                            if (i >= 7) reverbStageDb += (4.0f * wetScale)
+                            val fieldScale = (currentSettings.reverbSoundField / 100f).coerceIn(0.1f, 1.0f)
+                            
+                            // High-energy acoustic reverberation curve: massive mid/high reflection bloom
+                            when (i) {
+                                1, 2 -> reverbStageDb += (3.5f * wetScale * roomScale) // Low-mid warm room acoustic resonance
+                                3, 4, 5 -> reverbStageDb += (7.0f * wetScale * (roomScale / 1.5f)) // Mid vocal reverb decay
+                                6, 7 -> reverbStageDb += (9.0f * wetScale * fieldScale) // Upper reflection diffusion
+                                8, 9 -> reverbStageDb += (10.0f * wetScale * (1f - (currentSettings.reverbDampingFactor / 200f))) // Cathedral shimmering tail
+                            }
                         }
 
                         // 9. ViPER-DDC Headphone Correction Profile (Acoustic Harmonization Curves)

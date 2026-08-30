@@ -16,6 +16,17 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        try {
+            val serviceIntent = android.content.Intent(this, AudioEffectsService::class.java).apply {
+                action = AudioEffectsService.ACTION_UPDATE_SETTINGS
+            }
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
+        } catch (e: Exception) {}
+
         setContent {
             AntigravityEQTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {

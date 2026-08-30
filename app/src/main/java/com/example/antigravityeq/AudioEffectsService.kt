@@ -171,16 +171,78 @@ class AudioEffectsService : Service() {
         try {
             val isEnabled = currentSettings.isEnabled
 
-            // 1. Equalizer & Frequency Shaping
+            // 1. Unified 10-Band EQ & Multi-Module Harmonic Curve Synthesizer
+            // Combines Manual EQ + ViPER Clarity Treble + Convolver Tape/Tube + DDC Compensation + Dynamic Bass
             val eq = effects.equalizer
             if (eq != null) {
-                if (isEnabled && currentSettings.isEqEnabled) {
+                if (isEnabled) {
                     val numBands = eq.numberOfBands.toInt()
                     for (i in 0 until numBands) {
-                        if (i < currentSettings.bandLevels.size) {
-                            val levelMB = (currentSettings.bandLevels[i] * 100).coerceIn(-1500, 1500).toShort()
-                            eq.setBandLevel(i.toShort(), levelMB)
+                        var bandGainDb = if (currentSettings.isEqEnabled && i < currentSettings.bandLevels.size) {
+                            currentSettings.bandLevels[i].toFloat()
+                        } else {
+                            0f
                         }
+
+                        // Module: ViPER Clarity Treble Shelf (Bands 6..9: 2kHz, 4kHz, 8kHz, 16kHz)
+                        if (currentSettings.isClarityEnabled && currentSettings.clarity > 0 && i >= 6) {
+                            val clarityBoost = (currentSettings.clarity / 1000f) * (when (currentSettings.clarityMode) {
+                                0 -> 4f // Natural Air
+                                1 -> 7f // Ozone+ Excite
+                                else -> 10f // XHiFi Pro
+                            }) * ((i - 5) / 4f)
+                            bandGainDb += clarityBoost
+                        }
+
+                        // Module: Convolver & Analog Tape/Tube Saturation EQ Curve (Bands 0..9)
+                        if (currentSettings.isConvolverEnabled) {
+                            bandGainDb += when (currentSettings.convolverPreset) {
+                                0 -> if (i <= 2) 3.5f else if (i >= 7) 2.0f else 0f // Studer A800 Warm Tape Head
+                                1 -> if (i in 1..4) 4.0f else if (i >= 8) 1.5f else 0f // Telefunken 12AX7 Tube
+                                2 -> if (i <= 3) 6.0f else 0f // Sony MegaBass Punch
+                                3 -> if (i in 4..7) 2.5f else 0f // Lexicon Hall Presence
+                                4 -> if (i in 5..9) 3.0f else 0f // Dolby Atmos Air
+                                5 -> if (i <= 2) 2.5f else if (i in 3..6) 3.0f else 0f // Neve 1073 Transformer Warmth
+                                6 -> if (i in 2..5) 2.0f else 0f // SSL 4000G Bus
+                                else -> 0f
+                            }
+                        }
+
+                        // Module: Analog Tube Simulator (6N1P / 12AX7 2nd Harmonic Warmth)
+                        if (currentSettings.isTubeEnabled && currentSettings.tubeWarmth > 0) {
+                            val tubeBoost = (currentSettings.tubeWarmth / 1000f) * 3.5f
+                            if (i in 1..4) bandGainDb += tubeBoost // Warm even-order low-mid body
+                        }
+
+                        // Module: ViPER-DDC Headphone Correction Profile
+                        if (currentSettings.isDdcEnabled) {
+                            bandGainDb += when (currentSettings.ddcPreset) {
+                                1 -> if (i <= 1) 3.0f else if (i == 7) -2.5f else 0f // AirPods Pro Harman
+                                2 -> if (i in 2..3) -3.0f else if (i >= 8) 2.5f else 0f // Sony WH-1000XM4 De-mud
+                                3 -> if (i <= 1) 4.0f else if (i >= 8) 1.5f else 0f // Sennheiser HD650 Sub Air
+                                4 -> if (i == 8) -3.5f else if (i in 4..5) 1.5f else 0f // ATH-M50x Tamed Highs
+                                5 -> if (i == 7) -4.5f else if (i <= 1) 2.0f else 0f // Beyerdynamic DT990 Anti-Sibilance
+                                6 -> if (i in 3..4) 2.0f else if (i in 6..7) -2.0f else 0f // Bose QC45
+                                7 -> if (i <= 1) 2.5f else if (i in 6..7) -1.5f else 0f // Galaxy Buds2 Pro
+                                else -> 0f
+                            }
+                        }
+
+                        // Module: AnalogX Class-A Harmonic Transformer Coloration
+                        if (currentSettings.isAnalogXEnabled) {
+                            val axBoost = (currentSettings.analogXLevel + 1) * 1.5f
+                            if (i in 0..3) bandGainDb += axBoost // Rich low-mid body
+                            if (i >= 8) bandGainDb += (axBoost * 0.7f) // Extended silky air
+                        }
+
+                        // Module: Auditory System Protection (Cure+ Crossfeed & Transient Taming)
+                        if (currentSettings.isAuditoryProtectionEnabled) {
+                            if (i in 6..8) bandGainDb -= 2.0f // Tame harsh sibilance frequencies (4kHz - 8kHz)
+                            if (i in 2..4) bandGainDb += 1.0f // Smooth vocal warmth
+                        }
+
+                        val levelMB = (bandGainDb * 100f).coerceIn(-1500f, 1500f).toInt().toShort()
+                        eq.setBandLevel(i.toShort(), levelMB)
                     }
                     if (!eq.enabled) eq.enabled = true
                 } else {
@@ -191,8 +253,16 @@ class AudioEffectsService : Service() {
             // 2. ViPER Bass (Resonant sub-bass & natural boost)
             val bb = effects.bassBoost
             if (bb != null) {
+                var totalBass = 0
                 if (isEnabled && currentSettings.isBassEnabled && currentSettings.bassBoost > 0) {
-                    val strength = currentSettings.bassBoost.coerceIn(0, 1000).toShort()
+                    totalBass += currentSettings.bassBoost
+                }
+                if (isEnabled && currentSettings.isDynamicSystemEnabled && currentSettings.dynamicBassStrength > 0) {
+                    totalBass += (currentSettings.dynamicBassStrength * 25).coerceIn(0, 500)
+                }
+
+                if (totalBass > 0) {
+                    val strength = totalBass.coerceIn(0, 1000).toShort()
                     bb.setStrength(strength)
                     if (!bb.enabled) bb.enabled = true
                 } else {
@@ -200,11 +270,22 @@ class AudioEffectsService : Service() {
                 }
             }
 
-            // 3. 3D Surround Field / Virtualizer
+            // 3. 3D Surround Field / Virtualizer (Field Surround + Differential Surround + Headphone Surround+)
             val virt = effects.virtualizer
             if (virt != null) {
+                var totalSurround = 0
                 if (isEnabled && currentSettings.isFieldSurroundEnabled && currentSettings.fieldSurroundStrength > 0) {
-                    val strength = currentSettings.fieldSurroundStrength.coerceIn(0, 1000).toShort()
+                    totalSurround += currentSettings.fieldSurroundStrength
+                }
+                if (isEnabled && currentSettings.isDiffSurroundEnabled && currentSettings.diffSurroundDelay > 0) {
+                    totalSurround += (currentSettings.diffSurroundDelay * 45).coerceIn(0, 800)
+                }
+                if (isEnabled && currentSettings.isHeadphoneSurroundEnabled) {
+                    totalSurround += ((currentSettings.headphoneSurroundLevel + 1) * 150).coerceIn(0, 900)
+                }
+
+                if (totalSurround > 0) {
+                    val strength = totalSurround.coerceIn(0, 1000).toShort()
                     virt.setStrength(strength)
                     if (!virt.enabled) virt.enabled = true
                 } else {
@@ -229,25 +310,103 @@ class AudioEffectsService : Service() {
                 }
             }
 
-            // 5. Loudness Enhancer (Disabled to prevent conflict with master volume)
+            // 5. Loudness Enhancer (Playback AGC Gain + Master Output Volume Boost + Speaker Opt)
             val le = effects.loudnessEnhancer
-            if (le != null && le.enabled) {
-                le.enabled = false
+            if (le != null) {
+                val agcGainDb = if (isEnabled && currentSettings.isPlaybackAgcEnabled) currentSettings.playbackAgcMaxGain else 0
+                val spkOptGain = if (isEnabled && currentSettings.isSpeakerOptEnabled) 3 else 0
+                val totalGainDb = (currentSettings.outputGain + agcGainDb + spkOptGain)
+                
+                if (isEnabled && totalGainDb != 0) {
+                    val gainMb = (totalGainDb * 100).coerceIn(-2000, 2000)
+                    le.setTargetGain(gainMb)
+                    if (!le.enabled) le.enabled = true
+                } else {
+                    if (le.enabled) le.enabled = false
+                }
             }
 
-            Log.d(TAG, "Applied ViPER DSP params to session ${effects.sessionId}: enabled=$isEnabled")
+            Log.d(TAG, "Applied PulseFX unified DSP harmonic params to session ${effects.sessionId}: enabled=$isEnabled")
         } catch (e: Exception) {
             Log.e(TAG, "Error applying settings to session ${effects.sessionId}", e)
         }
     }
 
+    private fun playEngineActivationChime(sessionId: Int) {
+        Thread {
+            try {
+                // Synthesize a high-end, subtle dual-tone studio activation chime (880Hz -> 1760Hz bell)
+                val sampleRate = 44100
+                val durationMs = 120
+                val numSamples = (sampleRate * (durationMs / 1000.0)).toInt()
+                val audioData = ShortArray(numSamples)
+                
+                for (i in 0 until numSamples) {
+                    val t = i.toDouble() / sampleRate
+                    val envelope = Math.exp(-t * 28.0) // Smooth acoustic decay
+                    val freq = if (t < 0.04) 880.0 else 1760.0 // Pitch upward glide
+                    val sample = Math.sin(2.0 * Math.PI * freq * t) * envelope * 0.20 // -14dB subtle volume
+                    audioData[i] = (sample * Short.MAX_VALUE).toInt().toShort()
+                }
+
+                val audioAttributes = android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+
+                val audioFormat = android.media.AudioFormat.Builder()
+                    .setSampleRate(sampleRate)
+                    .setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT)
+                    .setChannelMask(android.media.AudioFormat.CHANNEL_OUT_MONO)
+                    .build()
+
+                val track = android.media.AudioTrack.Builder()
+                    .setAudioAttributes(audioAttributes)
+                    .setAudioFormat(audioFormat)
+                    .setBufferSizeInBytes(numSamples * 2)
+                    .setTransferMode(android.media.AudioTrack.MODE_STATIC)
+                    .setSessionId(if (sessionId > 0) sessionId else android.media.AudioManager.AUDIO_SESSION_ID_GENERATE)
+                    .build()
+
+                track.write(audioData, 0, numSamples)
+                track.play()
+                Thread.sleep(150)
+                track.stop()
+                track.release()
+            } catch (e: Exception) {
+                Log.w(TAG, "Audio confirmation chime skipped", e)
+            }
+        }.start()
+    }
+
+    private var lastEngagedState = false
+    private var lastEnabledModulesHash = 0
+
     private fun applySettingsToAll() {
         if (currentSettings.isEnabled && !activeSessions.containsKey(GLOBAL_SESSION_ID)) {
             handleOpenSession(GLOBAL_SESSION_ID)
         }
+        var anyEffectEngaged = false
         for (effects in activeSessions.values) {
             applySettingsToSession(effects)
+            if (effects.equalizer?.enabled == true || effects.bassBoost?.enabled == true || effects.virtualizer?.enabled == true || effects.presetReverb?.enabled == true || effects.loudnessEnhancer?.enabled == true) {
+                anyEffectEngaged = true
+            }
         }
+
+        val currentModulesHash = (if (currentSettings.isEnabled) 1 else 0) or
+            ((if (currentSettings.isEqEnabled) 1 else 0) shl 1) or
+            ((if (currentSettings.isBassEnabled) 1 else 0) shl 2) or
+            ((if (currentSettings.isPlaybackAgcEnabled) 1 else 0) shl 3) or
+            ((if (currentSettings.isFieldSurroundEnabled) 1 else 0) shl 4) or
+            ((if (currentSettings.isReverbEnabled) 1 else 0) shl 5)
+
+        // Only play confirmation chime when an effect SWITCH is physically turned ON, NEVER on slider dragging
+        if (anyEffectEngaged && currentSettings.isEnabled && (!lastEngagedState || currentModulesHash != lastEnabledModulesHash)) {
+            playEngineActivationChime(GLOBAL_SESSION_ID)
+        }
+        lastEngagedState = anyEffectEngaged && currentSettings.isEnabled
+        lastEnabledModulesHash = currentModulesHash
     }
 
     private fun scanActiveSessions() {

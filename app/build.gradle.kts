@@ -9,10 +9,10 @@ android {
     compileSdk = 36
     defaultConfig {
         applicationId = "com.example.antigravityeq"
-        minSdk = 24
-        targetSdk = 36
-        versionCode = 300
-        versionName = "3.0.0"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = 120
+        versionName = "1.2.0"
     }
 
     buildTypes {

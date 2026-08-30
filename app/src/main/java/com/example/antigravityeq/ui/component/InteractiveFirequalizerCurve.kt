@@ -44,15 +44,25 @@ private const val MAX_DB = 12.0f
 fun InteractiveFirequalizerCurve(
     bandLevels: List<Int>,
     onBandLevelsChange: (List<Int>) -> Unit,
+    isEqEnabled: Boolean = true,
+    liveLevels: FloatArray? = null,
     modifier: Modifier = Modifier
 ) {
     var selectedNodeIndex by remember { mutableStateOf<Int?>(null) }
     val textMeasurer = rememberTextMeasurer()
     val primaryColor = MaterialTheme.colorScheme.primary
+    val tertiaryColor = MaterialTheme.colorScheme.tertiary
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
     val outlineColor = MaterialTheme.colorScheme.outline
     val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
+
+    // Effective display levels: either dancing RTA live levels (when OFF) or user target (when ON)
+    val displayLevels = if (!isEqEnabled && liveLevels != null) {
+        liveLevels.map { it.roundToInt().coerceIn(-12, 12) }
+    } else {
+        bandLevels
+    }
 
     Column(
         modifier = modifier.fillMaxWidth()
@@ -90,48 +100,51 @@ fun InteractiveFirequalizerCurve(
                     .clip(RoundedCornerShape(12.dp))
                     .background(surfaceVariantColor)
                     .border(1.dp, outlineColor.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                    .pointerInput(bandLevels) {
-                        detectTapGestures { offset ->
-                            val width = size.width.toFloat()
-                            val height = size.height.toFloat()
-                            val tappedFreq = xToFreq(offset.x, width)
-                            
-                            var closestIdx = 0
-                            var minDistance = Double.MAX_VALUE
-                            frequencies.forEachIndexed { index, freq ->
-                                val dist = abs(log10(freq.toDouble()) - log10(tappedFreq))
-                                if (dist < minDistance) {
-                                    minDistance = dist
-                                    closestIdx = index
-                                }
-                            }
-                            
-                            val gainDb = yToDb(offset.y, height).roundToInt()
-                            val updated = bandLevels.toMutableList()
-                            if (closestIdx in updated.indices) {
-                                updated[closestIdx] = gainDb.coerceIn(MIN_DB.toInt(), MAX_DB.toInt())
-                            }
-                            selectedNodeIndex = closestIdx
-                            onBandLevelsChange(updated)
-                        }
-                    }
-                    .pointerInput(bandLevels) {
-                        detectDragGestures(
-                            onDragStart = { offset ->
+                    .pointerInput(displayLevels, isEqEnabled) {
+                        if (isEqEnabled) {
+                            detectTapGestures { offset ->
                                 val width = size.width.toFloat()
-                                val dragFreq = xToFreq(offset.x, width)
+                                val height = size.height.toFloat()
+                                val tappedFreq = xToFreq(offset.x, width)
+                                
                                 var closestIdx = 0
                                 var minDistance = Double.MAX_VALUE
-                                frequencies.forEachIndexed { index, freq ->
-                                    val dist = abs(log10(freq.toDouble()) - log10(dragFreq))
+                                for (i in frequencies.indices) {
+                                    val dist = abs(log10(frequencies[i].toDouble()) - log10(tappedFreq))
                                     if (dist < minDistance) {
                                         minDistance = dist
-                                        closestIdx = index
+                                        closestIdx = i
                                     }
                                 }
+                                
+                                val newDb = yToDb(offset.y, height).roundToInt().coerceIn(MIN_DB.toInt(), MAX_DB.toInt())
+                                val updated = bandLevels.toMutableList()
+                                updated[closestIdx] = newDb
+                                onBandLevelsChange(updated)
                                 selectedNodeIndex = closestIdx
-                            },
-                            onDrag = { change, _ ->
+                            }
+                        }
+                    }
+                    .pointerInput(displayLevels, isEqEnabled) {
+                        if (isEqEnabled) {
+                            detectDragGestures(
+                                onDragStart = { offset ->
+                                    val width = size.width.toFloat()
+                                    val tappedFreq = xToFreq(offset.x, width)
+                                    var closestIdx = 0
+                                    var minDistance = Double.MAX_VALUE
+                                    for (i in frequencies.indices) {
+                                        val dist = abs(log10(frequencies[i].toDouble()) - log10(tappedFreq))
+                                        if (dist < minDistance) {
+                                            minDistance = dist
+                                            closestIdx = i
+                                        }
+                                    }
+                                    selectedNodeIndex = closestIdx
+                                },
+                                onDragEnd = { selectedNodeIndex = null },
+                                onDragCancel = { selectedNodeIndex = null }
+                            ) { change, _ ->
                                 change.consume()
                                 val idx = selectedNodeIndex ?: return@detectDragGestures
                                 val height = size.height.toFloat()

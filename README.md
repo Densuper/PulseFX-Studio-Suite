@@ -2,7 +2,7 @@
   <img src="docs/images/banner.png" alt="PulseFX Studio Banner" width="100%">
 </p>
 
-# 🎛️ PulseFX Studio (v1.2.3)
+# 🎛️ PulseFX Studio (v1.3.0)
 
 <p align="center">
   <img src="docs/images/logo.png" alt="PulseFX Studio Logo" width="140" height="140">
@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Densuper/PulseFX-Studio-Suite/releases/tag/v1.2.3"><img src="https://img.shields.io/badge/Release-v1.2.3-00E5FF.svg" alt="Release"></a>
+  <a href="https://github.com/Densuper/PulseFX-Studio-Suite/releases/tag/v1.3.0"><img src="https://img.shields.io/badge/Release-v1.3.0-00E5FF.svg" alt="Release"></a>
   <a href="https://developer.android.com"><img src="https://img.shields.io/badge/Android-8.0%20to%2015%2B-69F0AE.svg" alt="Android"></a>
   <img src="https://img.shields.io/badge/Target-Google%20Pixel%20%26%20Universal-FFB74D.svg" alt="Target">
   <img src="https://img.shields.io/badge/Design-Google%20Material%203-80D8FF.svg" alt="Material 3">
@@ -33,14 +33,19 @@ Featuring an interactive **Catmull-Rom Paragraphic Spline Curve Equalizer**, dyn
 
 ## 🌟 Key Features
 
-### 🎛️ 1. Interactive Paragraphic Spline Curve Equalizer
+### 🎛️ 1. Interactive Paragraphic Spline Curve Equalizer & Live RTA Spectrum Analyzer
+- **Dual-Mode Visualizer**: When EQ is OFF, the 10 frequency nodes & spline curve actively dance in real time (60 FPS) to incoming audio stream FFT energy. When EQ is ON, it renders the user's touch-interactive target curve with an animated gold live baseline pulsing underneath.
+- **Top Showcase Hierarchy**: Promoted directly under the Master Limiter with an always-visible, expanded curve canvas.
 - **20 Hz to 20 kHz Logarithmic Scale**: Freeform touch drawing and individual node dragging with smooth Catmull-Rom cubic spline interpolation.
 - **Externalized Axis Architecture**: dB scales and frequency markers are rendered cleanly outside the curve box for unobstructed visualization.
-- **Real-Time Biquad IIR Math**: Resamples drawn curves directly into 10 Direct Form II peaking filters without audio pops or drops.
 - **One-Touch Reset**: Instantly flatten the response curve to 0 dB.
 - **21 Classic Audiophile Presets**: Acoustic, Bass Booster, Classical, Dance, Deep, Electronic, Hip-Hop, Jazz, Rock, Vocal Booster, etc.
 
-### 🔊 2. Real-Time Acoustic Mastering Modules (18-Module Suite)
+### 🎧 2. Connected Device Card & Pulsing Electric Circuit Flow
+- **Active Output Detection**: Instantly identifies connected Bluetooth earbuds (e.g. CMF Buds), USB-C DACs, or Internal Speakers with live audio format indicators (`48 kHz / 24-bit PCM`).
+- **Pulsing Electric Circuit Stream Lines**: Glowing cyan and gold animated energy lines flow from the device card down through the master limiter, equalizer, and into each active DSP module.
+
+### 🔊 3. Real-Time Acoustic Mastering Modules (18-Module Suite)
 1. **Master Limiter**: Lookahead soft-knee true-peak ceiling (0 dBFS protection) with independent output gain and pan control.
 2. **Playback AGC**: Fast-attack ballistic automatic gain leveling with configurable multipliers up to 18x.
 3. **FET Compressor**: Dynamic transfer curve visualizer with adjustable threshold (-40 to 0 dB), ratio (1:1 to 20:1), and makeup gain.
@@ -96,17 +101,17 @@ Featuring an interactive **Catmull-Rom Paragraphic Spline Curve Equalizer**, dyn
 ## 📥 Installation
 
 ### 🟢 Method 1: Non-Root Shizuku / Shevery Setup *(Recommended for 100% System-Wide Sound)*
-1. Download **`PulseFX-Studio-v1.2.3.apk`** and **`PulseFX-Studio-v1.2.3-Shevery.zip`** (1.99 KB) from [Releases](https://github.com/Densuper/PulseFX-Studio-Suite/releases).
-2. Install **`PulseFX-Studio-v1.2.3.apk`** on your phone.
-3. Open **Shevery** (with Shizuku active) $\to$ Tap **Add Module (+)** $\to$ Select **`PulseFX-Studio-v1.2.3-Shevery.zip`** $\to$ Tap **Install**.
+1. Download **`PulseFX-Studio-v1.3.0.apk`** and **`PulseFX-Studio-v1.3.0-Shevery.zip`** (1.99 KB) from [Releases](https://github.com/Densuper/PulseFX-Studio-Suite/releases).
+2. Install **`PulseFX-Studio-v1.3.0.apk`** on your phone.
+3. Open **Shevery** (with Shizuku active) $\to$ Tap **Add Module (+)** $\to$ Select **`PulseFX-Studio-v1.3.0-Shevery.zip`** $\to$ Tap **Install**.
 4. Open **PulseFX Studio** and toggle **Master Power**. All audio across YouTube, games, browsers, and media players is now mastered in real time!
 
 ### 🔵 Method 2: Standalone Plug & Play Mode *(Zero Setup / APK Only)*
-1. Download and install **`PulseFX-Studio-v1.2.3.apk`**.
+1. Download and install **`PulseFX-Studio-v1.3.0.apk`**.
 2. In **Spotify** or **Apple Music**, go to Settings $\to$ Equalizer $\to$ Select **PulseFX Studio**.
 
 ### 🛡️ Method 3: Magisk / KernelSU / APatch *(For Rooted Audiophiles)*
-1. Flash **`PulseFX-Studio-v1.2.3-Shevery.zip`** in Magisk / KernelSU.
+1. Flash **`PulseFX-Studio-v1.3.0-Shevery.zip`** in Magisk / KernelSU.
 2. Reboot your device and open **PulseFX Studio**.
 
 ---

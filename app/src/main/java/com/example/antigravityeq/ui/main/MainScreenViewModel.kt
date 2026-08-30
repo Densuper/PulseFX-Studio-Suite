@@ -4,17 +4,35 @@ import android.app.Application
 import android.content.Intent
 import android.os.Build
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.antigravityeq.AudioEffectsService
 import com.example.antigravityeq.data.EqualizerSettings
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 class MainScreenViewModel(application: Application) : AndroidViewModel(application) {
     private val context = application.applicationContext
     private val _uiState = MutableStateFlow(EqualizerSettings.load(context))
     val uiState: StateFlow<EqualizerSettings> = _uiState.asStateFlow()
+
+    private val _liveFftLevels = MutableStateFlow(FloatArray(10) { 0f })
+    val liveFftLevels: StateFlow<FloatArray> = _liveFftLevels.asStateFlow()
+
+    init {
+        // Polling loop for smooth 60 FPS live spectrum animation in UI
+        androidx.lifecycle.viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            while (kotlinx.coroutines.isActive) {
+                _liveFftLevels.value = AudioEffectsService.liveFftLevels
+                kotlinx.coroutines.delay(16L)
+            }
+        }
+    }
 
     fun updateSettings(transform: (EqualizerSettings) -> EqualizerSettings) {
         _uiState.update(transform)

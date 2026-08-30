@@ -27,15 +27,6 @@ class AudioEffectsService : Service() {
     private var currentSettings = EqualizerSettings()
     
     private val mainHandler = Handler(Looper.getMainLooper())
-    
-    private val sessionScannerRunnable = object : Runnable {
-        override fun run() {
-            if (currentSettings.isEnabled) {
-                scanActiveSessions()
-            }
-            mainHandler.postDelayed(this, 3000)
-        }
-    }
 
     companion object {
         private const val TAG = "ViPERAudioEffects"
@@ -49,6 +40,11 @@ class AudioEffectsService : Service() {
         const val EXTRA_AUDIO_SESSION = AudioEffect.EXTRA_AUDIO_SESSION
         
         private const val GLOBAL_SESSION_ID = 0
+
+        // 10-Band Live Stream FFT Magnitudes (-15dB to +15dB normalized)
+        @Volatile
+        var liveFftLevels: FloatArray = FloatArray(10) { 0f }
+            private set
     }
 
     private class AudioSessionEffects(
@@ -57,9 +53,16 @@ class AudioEffectsService : Service() {
         var bassBoost: BassBoost? = null,
         var virtualizer: Virtualizer? = null,
         var presetReverb: PresetReverb? = null,
-        var loudnessEnhancer: LoudnessEnhancer? = null
+        var loudnessEnhancer: LoudnessEnhancer? = null,
+        var visualizer: android.media.audiofx.Visualizer? = null
     ) {
         fun release() {
+            try {
+                visualizer?.enabled = false
+                visualizer?.release()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error releasing visualizer", e)
+            }
             try {
                 equalizer?.enabled = false
                 equalizer?.release()
@@ -175,6 +178,30 @@ class AudioEffectsService : Service() {
                     Log.w(TAG, "LoudnessEnhancer unavailable for session $sessionId")
                 }
             }
+
+            // Attach Real-Time Visualizer for Dynamic Spectral FFT Extraction
+            try {
+                val vis = android.media.audiofx.Visualizer(sessionId).apply {
+                    captureSize = android.media.audiofx.Visualizer.getCaptureSizeRange()[1].coerceAtMost(1024)
+                    setDataCaptureListener(
+                        object : android.media.audiofx.Visualizer.OnDataCaptureListener {
+                            override fun onWaveFormDataCapture(visualizer: android.media.audiofx.Visualizer?, waveform: ByteArray?, samplingRate: Int) {}
+                            override fun onFftDataCapture(visualizer: android.media.audiofx.Visualizer?, fft: ByteArray?, samplingRate: Int) {
+                                if (fft != null && fft.isNotEmpty()) {
+                                    computeFftBands(fft)
+                                }
+                            }
+                        },
+                        android.media.audiofx.Visualizer.getMaxCaptureRate() / 2,
+                        false,
+                        true
+                    )
+                    enabled = true
+                }
+                effects.visualizer = vis
+            } catch (e: Exception) {
+                Log.w(TAG, "Visualizer initialization for session $sessionId (fallback to simulation): ${e.message}")
+            }
             
             activeSessions[sessionId] = effects
             applySettingsToSession(effects)
@@ -189,6 +216,49 @@ class AudioEffectsService : Service() {
         Log.d(TAG, "Releasing audio session: $sessionId")
         activeSessions.remove(sessionId)?.release()
         updateNotification()
+    }
+
+    private fun computeFftBands(fft: ByteArray) {
+        // FFT byte array format: real[0], imag[0], real[1], imag[1]...
+        val n = fft.size / 2
+        val newLevels = FloatArray(10)
+        val bandIndices = listOf(
+            1..2,    // 31 Hz
+            2..4,    // 62 Hz
+            4..7,    // 125 Hz
+            7..14,   // 250 Hz
+            14..28,  // 500 Hz
+            28..55,  // 1 kHz
+            55..110, // 2 kHz
+            110..220,// 4 kHz
+            220..350,// 8 kHz
+            350..(n - 1).coerceAtLeast(351) // 16 kHz
+        )
+
+        for (b in 0 until 10) {
+            val range = bandIndices[b]
+            var sumMag = 0f
+            var count = 0
+            for (k in range) {
+                if (k * 2 + 1 < fft.size) {
+                    val r = fft[k * 2].toFloat()
+                    val im = fft[k * 2 + 1].toFloat()
+                    val mag = kotlin.math.sqrt(r * r + im * im)
+                    sumMag += mag
+                    count++
+                }
+            }
+            val avgMag = if (count > 0) sumMag / count else 0f
+            // Convert to normalized dB level in range -12dB to +12dB
+            val db = if (avgMag > 1f) {
+                (20f * kotlin.math.log10(avgMag / 128f)).coerceIn(-12f, 12f)
+            } else {
+                -12f
+            }
+            // Smooth with previous level (exponential moving average for silky animation)
+            newLevels[b] = (liveFftLevels[b] * 0.4f + db * 0.6f)
+        }
+        liveFftLevels = newLevels
     }
 
     private fun applySettingsToSession(effects: AudioSessionEffects) {

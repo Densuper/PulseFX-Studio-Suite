@@ -593,10 +593,21 @@ class AudioEffectsService : Service() {
                                 9 -> protectionStageDb -= 2.0f     // 16 kHz High air roll-off
                             }
                         }
+                        // 12. Speaker Optimization (Anti-Distortion High-Pass & Vocal Clarity Projection Stage)
                         var speakerOptStageDb = 0f
                         if (currentSettings.isSpeakerOptEnabled) {
-                            if (i in 3..6) speakerOptStageDb += 2.5f
-                            if (i <= 1) speakerOptStageDb -= 1.5f
+                            // Professional phone/external speaker acoustic tuning curve:
+                            // Filters out sub-bass frequencies below speaker physical excursion capability to stop rattling/distortion,
+                            // while pushing midrange vocal intelligibility and high-end crispness.
+                            when (i) {
+                                0 -> speakerOptStageDb -= 4.5f // 31 Hz Anti-distortion sub-bass high-pass filter (stops phone speaker cone rattling)
+                                1 -> speakerOptStageDb -= 2.0f // 62 Hz Clean bass cutoff
+                                3 -> speakerOptStageDb += 3.5f // 250 Hz Fundamental presence
+                                4, 5 -> speakerOptStageDb += 5.5f // 500 Hz - 1 kHz Forward vocal clarity & dialogue intelligibility
+                                6 -> speakerOptStageDb += 4.5f // 2 kHz Midrange definition
+                                7, 8 -> speakerOptStageDb += 4.0f // 4 kHz - 8 kHz Crisp speaker top-end lift
+                                9 -> speakerOptStageDb += 2.0f // 16 kHz High air
+                            }
                         }
 
                         // Decoupled Harmonic Summation with Headroom Protection:

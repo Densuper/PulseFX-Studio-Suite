@@ -310,23 +310,11 @@ class AudioEffectsService : Service() {
             // Combines Manual EQ + ViPER Clarity Treble + Convolver Tape/Tube + DDC Compensation + Dynamic Bass + AnalogX + Tube + Cure + Speaker Opt
             val eq = effects.equalizer
             if (eq != null) {
-                val hasAnyHarmonicModule = currentSettings.isEqEnabled ||
-                    currentSettings.isClarityEnabled ||
-                    currentSettings.isConvolverEnabled ||
-                    currentSettings.isTubeEnabled ||
-                    currentSettings.isDdcEnabled ||
-                    currentSettings.isAnalogXEnabled ||
-                    currentSettings.isAuditoryProtectionEnabled ||
-                    currentSettings.isSpeakerOptEnabled ||
-                    currentSettings.isSpectrumExtensionEnabled ||
-                    currentSettings.isDynamicSystemEnabled ||
-                    currentSettings.isFetCompressorEnabled ||
-                    currentSettings.isReverbEnabled
-
-                if (isEnabled && hasAnyHarmonicModule) {
+                // Sovereign Audio Pipeline: All audio is actively filtered and mastered through the app
+                if (isEnabled) {
                     val numBands = eq.numberOfBands.toInt()
                     for (i in 0 until numBands) {
-                        // 1. Base User 10-Band EQ Curve (Completely Independent Headroom)
+                        // 1. Base User 10-Band EQ Curve (Directly mastered through our app)
                         var userEqGainDb = if (currentSettings.isEqEnabled && i < currentSettings.bandLevels.size) {
                             currentSettings.bandLevels[i].toFloat()
                         } else {

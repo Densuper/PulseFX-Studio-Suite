@@ -375,11 +375,18 @@ class AudioEffectsService : Service() {
                             }
                         }
 
-                        // 6. Spectrum Extension (VSE High-Frequency Restoration)
+                        // 6. Spectrum Extension (VSE High-Frequency Restoration & Shimmer Exciter)
                         var vseStageDb = 0f
                         if (currentSettings.isSpectrumExtensionEnabled) {
-                            val strength = (currentSettings.spectrumExtensionStrength + 1) * 1.5f
-                            if (i >= 7) vseStageDb += strength
+                            val strengthNorm = (currentSettings.spectrumExtensionStrength.coerceAtLeast(1) / 10f).coerceIn(0.1f, 1.0f)
+                            // Injects high-frequency air curve across 4kHz (band 7), 8kHz (band 8), and 16kHz (band 9)
+                            vseStageDb += when (i) {
+                                6 -> 2.0f * strengthNorm  // 2kHz transition warmth
+                                7 -> 4.5f * strengthNorm  // 4kHz transient attack
+                                8 -> 8.0f * strengthNorm  // 8kHz cymbal presence
+                                9 -> 12.0f * strengthNorm // 16kHz ultra-high studio air
+                                else -> 0f
+                            }
                         }
 
                         // 7. Dynamic System Device Modeling Stage

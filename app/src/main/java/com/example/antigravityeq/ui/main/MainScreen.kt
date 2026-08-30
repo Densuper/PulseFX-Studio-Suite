@@ -415,7 +415,7 @@ fun MainScreen(
                     summary = "${settings.spectrumExtensionStrength}",
                     value = settings.spectrumExtensionStrength,
                     onValueChange = { v -> viewModel.updateSettings { s -> s.copy(spectrumExtensionStrength = v) } },
-                    valueRange = 0..4
+                    valueRange = 0..10
                 )
             }
 

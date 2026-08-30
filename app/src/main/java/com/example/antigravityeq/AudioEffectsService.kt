@@ -337,17 +337,58 @@ class AudioEffectsService : Service() {
                             clarityStageDb += clarityBoost
                         }
 
-                        // 3. Convolver & Analog Tape/Console Coloration (Isolated Stage)
+                        // 3. Convolver & Analog Tape/Console Coloration (Studio Impulse Response Stage)
                         var convolverStageDb = 0f
                         if (currentSettings.isConvolverEnabled) {
+                            val crossRatio = (currentSettings.convolverCrossChannel / 100f).coerceIn(0.1f, 1.0f)
                             convolverStageDb += when (currentSettings.convolverPreset) {
-                                0 -> if (i <= 2) 3.5f else if (i >= 7) 2.5f else 0f // Studer A800 Warm Tape Head
-                                1 -> if (i in 1..4) 4.0f else if (i >= 8) 2.0f else 0f // Telefunken 12AX7 Tube
-                                2 -> if (i <= 3) 5.5f else 0f // Sony MegaBass Punch
-                                3 -> if (i in 4..7) 2.5f else 0f // Lexicon Hall Presence
-                                4 -> if (i in 5..9) 3.0f else 0f // Dolby Atmos Air
-                                5 -> if (i <= 2) 2.5f else if (i in 3..6) 3.0f else 0f // Neve 1073 Transformer Warmth
-                                6 -> if (i in 2..5) 2.0f else 0f // SSL 4000G Bus
+                                0 -> when (i) { // Studer A800 Mastering Tape (Analog Tape Compression & Head Bump)
+                                    0, 1 -> 4.5f * crossRatio // 31-62Hz Tape Head Bump
+                                    2, 3 -> 2.0f * crossRatio
+                                    7, 8 -> 3.5f * crossRatio // Tape Saturation Shimmer
+                                    else -> 0f
+                                }
+                                1 -> when (i) { // Telefunken 12AX7 Dual Triode Tube (Warm 2nd-Order Low-Mid Body)
+                                    1, 2, 3 -> 5.0f * crossRatio // 62Hz-250Hz Rich Tube Bloom
+                                    4 -> 2.5f * crossRatio
+                                    8, 9 -> 3.0f * crossRatio // Silky Triode Highs
+                                    else -> 0f
+                                }
+                                2 -> when (i) { // Sony Walkman MegaBass IRS (Legendary Walkman Sub Punch)
+                                    0 -> 7.5f * crossRatio
+                                    1 -> 6.0f * crossRatio
+                                    2 -> 4.0f * crossRatio
+                                    else -> 0f
+                                }
+                                3 -> when (i) { // Lexicon 480L Concert Hall Ambience (Rich Studio Reverb Space)
+                                    3, 4, 5 -> 3.5f * crossRatio // Vocal Room Depth
+                                    6, 7 -> 2.5f * crossRatio
+                                    8, 9 -> 4.0f * crossRatio // Long Acoustic Decay Air
+                                    else -> 0f
+                                }
+                                4 -> when (i) { // Dolby Atmos Cinema Spatial Stage (Immersive Holographic 3D Air)
+                                    0, 1 -> 3.0f * crossRatio
+                                    5, 6 -> 3.0f * crossRatio
+                                    7, 8, 9 -> 5.5f * crossRatio // Height Channel Shimmer
+                                    else -> 0f
+                                }
+                                5 -> when (i) { // Neve 1073 British Console Transformer (Punchy Low-Mid Iron Weight)
+                                    0, 1 -> 3.5f * crossRatio
+                                    2, 3, 4 -> 4.5f * crossRatio // Classic Neve Inductor Warmth
+                                    7 -> 2.5f * crossRatio
+                                    else -> 0f
+                                }
+                                6 -> when (i) { // Solid State Logic 4000G Bus Color (Punchy Transient Glue)
+                                    1, 2 -> 3.5f * crossRatio // Snappy Kick Punch
+                                    5, 6 -> 3.0f * crossRatio // Snare Crack & Vocal Snap
+                                    8, 9 -> 3.5f * crossRatio // SSL Top-End Sheen
+                                    else -> 0f
+                                }
+                                7 -> when (i) { // EMT 140 Classic Plate Reverb (Smooth Metallic Plate Air)
+                                    4, 5, 6 -> 3.0f * crossRatio // Warm Plate Mid-Density
+                                    7, 8, 9 -> 5.0f * crossRatio // High-Frequency Plate Ring
+                                    else -> 0f
+                                }
                                 else -> 0f
                             }
                         }

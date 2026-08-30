@@ -7,6 +7,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,7 +68,7 @@ fun MainScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "v1.2.1 • ViPER DSP Master Release",
+                            text = "v1.2.2 • Stream Refresh & DSP Master Release",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -145,10 +147,50 @@ fun MainScreen(
                 title = {
                     Column {
                         Text("PulseFX Studio", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("v1.2.1 • Sovereign DSP Audio Suite", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        Text("v1.2.2 • Sovereign DSP Audio Suite", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                 },
                 actions = {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    var isRefreshing by remember { mutableStateOf(false) }
+
+                    // Rounded Refresh Audio Stream Button
+                    IconButton(
+                        onClick = {
+                            isRefreshing = true
+                            try {
+                                val rebootIntent = android.content.Intent(context, com.example.antigravityeq.AudioEffectsService::class.java).apply {
+                                    action = com.example.antigravityeq.AudioEffectsService.ACTION_REBOOT_ENGINE
+                                }
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                    context.startForegroundService(rebootIntent)
+                                } else {
+                                    context.startService(rebootIntent)
+                                }
+                                android.widget.Toast.makeText(context, "⚡ Audio Engine & Stream Hook Refreshed!", android.widget.Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                android.util.Log.e("MainScreen", "Error triggering audio stream reboot", e)
+                            }
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ isRefreshing = false }, 800)
+                        }
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .background(MaterialTheme.colorScheme.primaryContainer, androidx.compose.foundation.shape.CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "↻",
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(2.dp))
+
                     IconButton(onClick = { showAboutDialog = true }) {
                         Box(
                             modifier = Modifier

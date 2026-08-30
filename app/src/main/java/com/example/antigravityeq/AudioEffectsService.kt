@@ -43,6 +43,7 @@ class AudioEffectsService : Service() {
         private const val NOTIFICATION_ID = 101
 
         const val ACTION_UPDATE_SETTINGS = "com.example.antigravityeq.UPDATE_SETTINGS"
+        const val ACTION_REBOOT_ENGINE = "com.example.antigravityeq.REBOOT_ENGINE"
         const val ACTION_OPEN_SESSION = AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION
         const val ACTION_CLOSE_SESSION = AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION
         const val EXTRA_AUDIO_SESSION = AudioEffect.EXTRA_AUDIO_SESSION
@@ -123,6 +124,29 @@ class AudioEffectsService : Service() {
                 ACTION_UPDATE_SETTINGS -> {
                     currentSettings = EqualizerSettings.load(this)
                     applySettingsToAll()
+                    updateNotification()
+                }
+                ACTION_REBOOT_ENGINE -> {
+                    Log.i(TAG, "Executing full systemic audio engine reboot & session flush...")
+                    // 1. Release all existing sessions
+                    for (effects in activeSessions.values) {
+                        effects.release()
+                    }
+                    activeSessions.clear()
+
+                    // 2. Reload latest persistent settings
+                    currentSettings = EqualizerSettings.load(this)
+
+                    // 3. Re-open Global Session 0
+                    handleOpenSession(GLOBAL_SESSION_ID)
+
+                    // 4. Force immediate dumpsys media.audio_flinger scan
+                    scanActiveSessions()
+
+                    // 5. Apply settings and play double confirmation chime
+                    applySettingsToAll()
+                    playEngineActivationChime(GLOBAL_SESSION_ID)
+                    mainHandler.postDelayed({ playEngineActivationChime(GLOBAL_SESSION_ID) }, 180)
                     updateNotification()
                 }
             }

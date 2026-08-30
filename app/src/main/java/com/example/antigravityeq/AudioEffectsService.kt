@@ -405,17 +405,60 @@ class AudioEffectsService : Service() {
                             if (i >= 8) reverbStageDb -= (1.0f * (1f - (currentSettings.reverbDampingFactor / 100f)))
                         }
 
-                        // 9. ViPER-DDC Headphone Correction Profile
+                        // 9. ViPER-DDC Headphone Correction Profile (Acoustic Harmonization Curves)
                         var ddcStageDb = 0f
                         if (currentSettings.isDdcEnabled) {
                             ddcStageDb += when (currentSettings.ddcPreset) {
-                                1 -> if (i <= 1) 2.5f else if (i == 7) -2.0f else 0f
-                                2 -> if (i in 2..3) -2.5f else if (i >= 8) 2.0f else 0f
-                                3 -> if (i <= 1) 3.5f else if (i >= 8) 1.5f else 0f
-                                4 -> if (i == 8) -2.5f else if (i in 4..5) 1.5f else 0f
-                                5 -> if (i == 7) -3.5f else if (i <= 1) 2.0f else 0f
-                                6 -> if (i in 3..4) 1.5f else if (i in 6..7) -1.5f else 0f
-                                7 -> if (i <= 1) 2.0f else if (i in 6..7) -1.5f else 0f
+                                0 -> 0.0f // Generic / Flat Reference IEM (Neutral Studio Monitor)
+                                1 -> when (i) { // Apple AirPods Pro (Spatial Curve & Mid-Bass Warmth)
+                                    0, 1 -> 3.5f
+                                    2 -> 2.0f
+                                    6 -> 1.5f
+                                    7 -> -3.0f // Tames harsh 4kHz resonance
+                                    8, 9 -> 2.5f
+                                    else -> 0f
+                                }
+                                2 -> when (i) { // Sony WH-1000XM4 (Clarity & Tamed Mid-Bass Boom)
+                                    0, 1 -> -2.5f // Tames boomy 62Hz mud
+                                    4, 5 -> 2.0f  // Elevates vocal intelligibility
+                                    7, 8, 9 -> 4.5f // Injects Sony LDAC top-end shimmer
+                                    else -> 0f
+                                }
+                                3 -> when (i) { // Sennheiser HD650 (Diffuse Reference & Sub-Bass Extension)
+                                    0, 1 -> 5.0f // Compensates open-back sub-bass rolloff
+                                    2, 3 -> 1.5f
+                                    6, 7 -> -1.5f // Smooths 3-6kHz peak
+                                    8, 9 -> 3.0f // Airy top-end sparkle
+                                    else -> 0f
+                                }
+                                4 -> when (i) { // Audio-Technica ATH-M50x (Tamed Highs & Linearized Mids)
+                                    0 -> 1.0f
+                                    2, 3 -> -2.0f
+                                    4, 5 -> 2.5f // Restores recessed mid vocal stage
+                                    7, 8 -> -4.0f // Eliminates notorious 8kHz piercing sibilance
+                                    else -> 0f
+                                }
+                                5 -> when (i) { // Beyerdynamic DT990 (Anti-Sibilance & Harman Lows)
+                                    0, 1 -> 3.5f // Sub-bass body
+                                    6, 7, 8 -> -5.5f // Aggressively cuts harsh Beyer treble peak
+                                    9 -> 2.0f // Ultra-high air extension
+                                    else -> 0f
+                                }
+                                6 -> when (i) { // Bose QuietComfort 45 (Linear Balanced & Vocal Lift)
+                                    0, 1 -> 2.0f
+                                    3, 4, 5 -> 3.5f // Lifts Bose nasal vocal box
+                                    7 -> -2.5f
+                                    8, 9 -> 2.0f
+                                    else -> 0f
+                                }
+                                7 -> when (i) { // Samsung Galaxy Buds2 Pro (Harman Target Target Match)
+                                    0, 1 -> 3.0f // Harman sub-bass shelf
+                                    3 -> -1.5f
+                                    5, 6 -> 2.5f // Pinna gain lift
+                                    7 -> -2.0f
+                                    8, 9 -> 3.5f // Micro-detail air
+                                    else -> 0f
+                                }
                                 else -> 0f
                             }
                         }

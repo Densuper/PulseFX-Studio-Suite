@@ -30,8 +30,8 @@ data class EqualizerSettings(
 
     // Field Surround & Differential Surround
     val isFieldSurroundEnabled: Boolean = false,
-    val fieldSurroundStrength: Int = 300, // 0 to 1000 (0% to 100% stereo width)
-    val midImageSize: Int = 500, // 0 to 1000 (Center vocal presence)
+    val fieldSurroundStrength: Int = 50, // 0 to 100 (0% to 100% stereo width)
+    val midImageSize: Int = 50, // 0 to 100 (Center vocal presence)
     val isDiffSurroundEnabled: Boolean = false,
     val diffSurroundDelay: Int = 5, // ms (1 to 20ms Haas inter-aural delay)
 
@@ -207,8 +207,8 @@ data class EqualizerSettings(
             val convolverCrossChannel = prefs.getInt("v4a_convolver_cross", 20)
 
             val isFieldSurroundEnabled = prefs.getBoolean("v4a_surround_enabled", false)
-            val fieldSurroundStrength = prefs.getInt("v4a_surround_strength", 300)
-            val midImageSize = prefs.getInt("v4a_surround_mid", 500)
+            val fieldSurroundStrength = prefs.getInt("v4a_surround_strength", 50)
+            val midImageSize = prefs.getInt("v4a_surround_mid", 50)
             val isDiffSurroundEnabled = prefs.getBoolean("v4a_diff_surround_enabled", false)
             val diffSurroundDelay = prefs.getInt("v4a_diff_surround_delay", 5)
 
@@ -223,16 +223,16 @@ data class EqualizerSettings(
             val dynamicDevice = prefs.getInt("v4a_dynamic_dev", 0)
             val dynamicBassStrength = prefs.getInt("v4a_dynamic_bass", 14)
 
-            val isBassEnabled = prefs.getBoolean("v4a_bass_enabled", true)
+            val isBassEnabled = prefs.getBoolean("v4a_bass_enabled", false)
             val viperBassMode = prefs.getInt("v4a_bass_mode", 1)
             val bassFrequency = prefs.getInt("v4a_bass_freq", 60)
             val bassBoost = prefs.getInt("v4a_bass_boost", 600)
 
-            val isClarityEnabled = prefs.getBoolean("v4a_clarity_enabled", true)
+            val isClarityEnabled = prefs.getBoolean("v4a_clarity_enabled", false)
             val clarityMode = prefs.getInt("v4a_clarity_mode", 1)
             val clarity = prefs.getInt("v4a_clarity_gain", 500)
 
-            val isTubeEnabled = prefs.getBoolean("v4a_tube_enabled", true)
+            val isTubeEnabled = prefs.getBoolean("v4a_tube_enabled", false)
             val tubeWarmth = prefs.getInt("v4a_tube_warmth", 350)
 
             val isLimiterEnabled = prefs.getBoolean("v4a_limiter_enabled", false)

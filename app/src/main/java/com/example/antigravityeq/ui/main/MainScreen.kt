@@ -490,28 +490,8 @@ fun MainScreen(
                     valueRange = 0..4
                 )
             }
-                                    eqPreset = idx,
-                                    bandLevels = presetValues
-                                )
-                            }
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(14.dp))
-                    InteractiveFirequalizerCurve(
-                        bandLevels = settings.bandLevels,
-                        onBandLevelsChange = { updatedLevels ->
-                            viewModel.updateSettings { s ->
-                                s.copy(
-                                    bandLevels = updatedLevels,
-                                    eqPreset = 0 // Custom
-                                )
-                            }
-                        }
-                    )
-                }
-            }
 
-            // Convolver
+            // 8. Convolver
             EffectCard(
                 badgeText = "IRS",
                 name = "Convolver",

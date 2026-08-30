@@ -26,10 +26,10 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
     init {
         // Polling loop for smooth 60 FPS live spectrum animation in UI
-        androidx.lifecycle.viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
-            while (kotlinx.coroutines.isActive) {
+        viewModelScope.launch(Dispatchers.Default) {
+            while (isActive) {
                 _liveFftLevels.value = AudioEffectsService.liveFftLevels
-                kotlinx.coroutines.delay(16L)
+                delay(16L)
             }
         }
     }

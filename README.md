@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Densuper/ViPER4Android-FX-Studio-Suite/releases/tag/v1.2.0"><img src="https://img.shields.io/badge/Release-v1.2.0-00E5FF.svg" alt="Release"></a>
+  <a href="https://github.com/Densuper/PulseFX-Studio-Suite/releases/tag/v1.2.0"><img src="https://img.shields.io/badge/Release-v1.2.0-00E5FF.svg" alt="Release"></a>
   <a href="https://developer.android.com"><img src="https://img.shields.io/badge/Android-8.0%20to%2015%2B-69F0AE.svg" alt="Android"></a>
   <img src="https://img.shields.io/badge/Target-Google%20Pixel%20%26%20Universal-FFB74D.svg" alt="Target">
   <img src="https://img.shields.io/badge/Design-Google%20Material%203-80D8FF.svg" alt="Material 3">
@@ -96,7 +96,7 @@ Featuring an interactive **Catmull-Rom Paragraphic Spline Curve Equalizer**, dyn
 ## 📥 Installation
 
 ### 🟢 Method 1: Non-Root Shizuku / Shevery Setup *(Recommended for 100% System-Wide Sound)*
-1. Download **`PulseFX-Studio-v1.2.0.apk`** and **`PulseFX-Studio-v1.2.0-Shevery.zip`** (1.99 KB) from [Releases](https://github.com/Densuper/ViPER4Android-FX-Studio-Suite/releases).
+1. Download **`PulseFX-Studio-v1.2.0.apk`** and **`PulseFX-Studio-v1.2.0-Shevery.zip`** (1.99 KB) from [Releases](https://github.com/Densuper/PulseFX-Studio-Suite/releases).
 2. Install **`PulseFX-Studio-v1.2.0.apk`** on your phone.
 3. Open **Shevery** (with Shizuku active) $\to$ Tap **Add Module (+)** $\to$ Select **`PulseFX-Studio-v1.2.0-Shevery.zip`** $\to$ Tap **Install**.
 4. Open **PulseFX Studio** and toggle **Master Power**. All audio across YouTube, games, browsers, and media players is now mastered in real time!

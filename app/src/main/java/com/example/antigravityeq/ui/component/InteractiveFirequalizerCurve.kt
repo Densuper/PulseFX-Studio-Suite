@@ -143,22 +143,21 @@ fun InteractiveFirequalizerCurve(
                                     selectedNodeIndex = closestIdx
                                 },
                                 onDragEnd = { selectedNodeIndex = null },
-                                onDragCancel = { selectedNodeIndex = null }
-                            ) { change, _ ->
-                                change.consume()
-                                val idx = selectedNodeIndex ?: return@detectDragGestures
-                                val height = size.height.toFloat()
-                                val gainDb = yToDb(change.position.y, height).roundToInt()
-                                
-                                val updated = bandLevels.toMutableList()
-                                if (idx in updated.indices) {
-                                    updated[idx] = gainDb.coerceIn(MIN_DB.toInt(), MAX_DB.toInt())
+                                onDragCancel = { selectedNodeIndex = null },
+                                onDrag = { change, _ ->
+                                    change.consume()
+                                    val idx = selectedNodeIndex ?: return@detectDragGestures
+                                    val height = size.height.toFloat()
+                                    val gainDb = yToDb(change.position.y, height).roundToInt()
+                                    
+                                    val updated = bandLevels.toMutableList()
+                                    if (idx in updated.indices) {
+                                        updated[idx] = gainDb.coerceIn(MIN_DB.toInt(), MAX_DB.toInt())
+                                    }
+                                    onBandLevelsChange(updated)
                                 }
-                                onBandLevelsChange(updated)
-                            },
-                            onDragEnd = { selectedNodeIndex = null },
-                            onDragCancel = { selectedNodeIndex = null }
-                        )
+                            )
+                        }
                     }
             ) {
                 Canvas(modifier = Modifier.fillMaxSize()) {

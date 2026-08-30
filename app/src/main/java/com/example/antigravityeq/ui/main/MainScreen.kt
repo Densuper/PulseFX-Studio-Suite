@@ -39,17 +39,16 @@ fun MainScreen(
     viewModel: MainScreenViewModel = viewModel()
 ) {
     val settings by viewModel.uiState.collectAsStateWithLifecycle()
-    val isCapturing by MainActivity.isCaptureRunning
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = BgColor,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text("PulseFX Studio", color = AccentColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("v3.0.0 • Non-Root DSP Audio Suite", color = MutedTextColor, fontSize = 11.sp)
+                        Text("PulseFX Studio", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("v3.0.0 • Non-Root DSP Audio Suite", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                 },
                 actions = {
@@ -57,8 +56,7 @@ fun MainScreen(
                         checked = settings.isEnabled,
                         onCheckedChange = { viewModel.updateSettings { s -> s.copy(isEnabled = it) } }
                     )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = BgColor)
+                }
             )
         }
     ) { innerPadding ->
@@ -70,26 +68,6 @@ fun MainScreen(
                 .padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Master Stream Catch Card
-            EffectCard(
-                badgeText = "SYS",
-                name = "Audio Stream Catch",
-                enabled = isCapturing,
-                onEnabledChange = {
-                    if (it) {
-                        MainActivity.triggerCaptureLauncher?.invoke()
-                    } else {
-                        MainActivity.stopCaptureService?.invoke()
-                    }
-                }
-            ) {
-                Text(
-                    text = if (isCapturing) "Actively processing audio stream" else "Stream capture is inactive",
-                    color = MutedTextColor,
-                    fontSize = 14.sp
-                )
-            }
-
             // Master Limiter
             EffectCard(
                 badgeText = "OUT",

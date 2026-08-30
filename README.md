@@ -1,20 +1,33 @@
-﻿# 🎛️ PulseFX Studio (v3.0.0)
+﻿<p align="center">
+  <img src="docs/images/banner.png" alt="PulseFX Studio Banner" width="100%">
+</p>
 
-> **Next-Generation Real-Time DSP Audio Mastering Suite for Android 15 & Modern Devices**  
-> *Engineered for Unrooted & Rooted Android Devices with Zero-Latency Master Stream Capture.*
+# 🎛️ PulseFX Studio (v3.0.0)
 
-[![Release](https://img.shields.io/badge/Release-v3.0.0-00E5FF.svg)](https://github.com/Densuper/ViPER4Android-FX-Studio-Suite/releases/tag/v3.0.0)
-[![Android](https://img.shields.io/badge/Android-8.0%20to%2015%2B-69F0AE.svg)](https://developer.android.com)
-[![Platform](https://img.shields.io/badge/Target-Google%20Pixel%20%26%20Universal-FFB74D.svg)]()
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+<p align="center">
+  <img src="docs/images/logo.png" alt="PulseFX Studio Logo" width="120" height="120">
+</p>
+
+<p align="center">
+  <strong>Next-Generation Real-Time DSP Audio Mastering Suite for Android 15 & Modern Devices</strong><br>
+  <em>Engineered for Unrooted & Rooted Android Devices with Zero-Permission Native Audio Hooking.</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Densuper/ViPER4Android-FX-Studio-Suite/releases/tag/v3.0.0"><img src="https://img.shields.io/badge/Release-v3.0.0-00E5FF.svg" alt="Release"></a>
+  <a href="https://developer.android.com"><img src="https://img.shields.io/badge/Android-8.0%20to%2015%2B-69F0AE.svg" alt="Android"></a>
+  <img src="https://img.shields.io/badge/Target-Google%20Pixel%20%26%20Universal-FFB74D.svg" alt="Target">
+  <img src="https://img.shields.io/badge/Design-Google%20Material%203-80D8FF.svg" alt="Material 3">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
+</p>
 
 ---
 
 ## 🚀 Overview
 
-**PulseFX Studio** is a complete, ground-up reimagining of Android audio signal processing. While inspired by the legendary acoustic concepts of **ViPER's Audio**, PulseFX Studio replaces the legacy, deprecated C++ kernel drivers with a modern, high-precision **32-bit floating-point DSP engine** that works across **all media (YouTube, Spotify, Games, Web Audio)** without requiring root access.
+**PulseFX Studio** is a complete, ground-up reimagining of Android audio signal processing. While inspired by the legendary acoustic concepts of **ViPER's Audio**, PulseFX Studio eliminates legacy C++ kernel driver dependencies in favor of a high-precision **32-bit floating-point DSP engine** that works across **all media (YouTube, Spotify, Games, Web Audio)** without requiring screen capture or intrusive permissions.
 
-Featuring an interactive **Catmull-Rom Paragraphic Spline Curve Equalizer**, touch-drawn resonance curves, and a clean Material 3 dark studio interface, PulseFX Studio gives you studio-grade acoustic control on your phone.
+Featuring an interactive **Catmull-Rom Paragraphic Spline Curve Equalizer**, dynamic resonance visualizers, and a **100% Google Material 3 Dynamic Theme** (adapting automatically to phone wallpaper palettes in light and dark modes), PulseFX Studio brings studio-grade mastering to modern Android.
 
 ---
 
@@ -54,8 +67,8 @@ Featuring an interactive **Catmull-Rom Paragraphic Spline Curve Equalizer**, tou
             ▼                                     ▼
 ┌──────────────────────────────┐    ┌──────────────────────────────┐
 │       NON-ROOT MODE          │    │          ROOT MODE           │
-│   AudioPlaybackCapture       │    │   Shevery AudioFlinger Hook  │
-│   Master 48kHz Stereo PCM    │    │   Auto-Session Relay Daemon  │
+│   Native AudioEffectsService │    │   Shevery AudioFlinger Hook  │
+│   Session Auto-Relay Engine  │    │   Auto-Session Relay Daemon  │
 └──────────────┬───────────────┘    └──────────────┬───────────────┘
                │                                   │
                └──────────────────┬────────────────┘
@@ -78,7 +91,7 @@ Featuring an interactive **Catmull-Rom Paragraphic Spline Curve Equalizer**, tou
 ### Non-Root Users (Standard Android 8.0 - 15+):
 1. Download **`PulseFX-Studio-v3.0.0.apk`** from the [Releases](https://github.com/Densuper/ViPER4Android-FX-Studio-Suite/releases) page.
 2. Install the APK on your device.
-3. Open the app, grant the Audio Capture permission prompt, and enjoy system-wide sound enhancement.
+3. Open the app, adjust your sound curves, and enjoy system-wide sound enhancement.
 
 ### Root / Magisk / KernelSU / APatch Users:
 1. Flash **`PulseFX-Studio-v3.0.0-Shevery.zip`** in Magisk / KernelSU / APatch.

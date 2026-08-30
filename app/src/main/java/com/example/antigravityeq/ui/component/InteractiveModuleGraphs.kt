@@ -1,4 +1,4 @@
-﻿package com.example.antigravityeq.ui.component
+package com.example.antigravityeq.ui.component
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -45,7 +45,7 @@ fun InteractiveBassCurveGraph(
             .fillMaxWidth()
             .height(150.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF0F1016))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .pointerInput(frequencyHz, gainBoost) {
                 detectDragGestures { change, _ ->
                     change.consume()
@@ -190,7 +190,7 @@ fun InteractiveClarityCurveGraph(
             .fillMaxWidth()
             .height(140.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF0F1016))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .pointerInput(clarityGain) {
                 detectDragGestures { change, _ ->
                     change.consume()
@@ -314,7 +314,7 @@ fun InteractiveCompressorGraph(
             .fillMaxWidth()
             .height(150.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF0F1016))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .pointerInput(thresholdDb, ratio) {
                 detectDragGestures { change, _ ->
                     change.consume()

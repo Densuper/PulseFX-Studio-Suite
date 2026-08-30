@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -45,7 +46,10 @@ fun EffectCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (enabled == true) Color(0xFF1F222E) else Color(0xFF1A1C24)
+            containerColor = if (enabled == true) 
+                MaterialTheme.colorScheme.surfaceVariant 
+            else 
+                MaterialTheme.colorScheme.surface
         )
     ) {
         Column(
@@ -67,14 +71,19 @@ fun EffectCard(
                         .size(38.dp)
                         .clip(CircleShape)
                         .background(
-                            if (enabled == true) Color(0xFF00E5FF).copy(alpha = 0.22f) 
-                            else Color(0xFF2B3042)
+                            if (enabled == true) 
+                                MaterialTheme.colorScheme.primaryContainer 
+                            else 
+                                MaterialTheme.colorScheme.surfaceVariant
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = badgeText,
-                        color = if (enabled == true) Color(0xFF00E5FF) else Color(0xFF9AA5B8),
+                        color = if (enabled == true) 
+                            MaterialTheme.colorScheme.onPrimaryContainer 
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp,
                         textAlign = TextAlign.Center
@@ -83,7 +92,10 @@ fun EffectCard(
 
                 Text(
                     text = name,
-                    color = if (enabled == true) Color(0xFFEDF1F8) else Color(0xFFB0B8C8),
+                    color = if (enabled == true) 
+                        MaterialTheme.colorScheme.onSurface 
+                    else 
+                        MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = if (enabled == true) FontWeight.SemiBold else FontWeight.Normal,
                     modifier = Modifier.weight(1f),
                     overflow = TextOverflow.Ellipsis,
@@ -94,7 +106,10 @@ fun EffectCard(
                 if (expandedContent != null) {
                     Text(
                         text = "▼",
-                        color = if (expanded) Color(0xFF00E5FF) else Color(0xFF6B7280),
+                        color = if (expanded) 
+                            MaterialTheme.colorScheme.primary 
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
                         modifier = Modifier
                             .rotate(rotationAngle)
@@ -110,13 +125,7 @@ fun EffectCard(
                             if (isChecked && expandedContent != null) {
                                 expanded = true
                             }
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color(0xFF1A1C24),
-                            checkedTrackColor = Color(0xFF00E5FF),
-                            uncheckedThumbColor = Color(0xFF9AA5B8),
-                            uncheckedTrackColor = Color(0xFF12131A)
-                        )
+                        }
                     )
                 }
             }

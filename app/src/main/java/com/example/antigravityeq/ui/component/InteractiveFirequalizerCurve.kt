@@ -1,4 +1,4 @@
-﻿package com.example.antigravityeq.ui.component
+package com.example.antigravityeq.ui.component
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -51,7 +51,7 @@ fun InteractiveFirequalizerCurve(
                 .fillMaxWidth()
                 .height(230.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF0F1016))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
                 .pointerInput(bandLevels) {
                     detectDragGestures(
                         onDragStart = { offset ->
@@ -74,29 +74,32 @@ fun InteractiveFirequalizerCurve(
                             }
                             
                             selectedNodeIndex = closestIdx
-                            
-                            if (closestIdx == null) {
-                                val touchFreq = xToFreq(offset.x, width)
-                                val nearestBand = findNearestBandIndex(touchFreq, frequencies)
-                                val newDb = yToDb(offset.y, height).roundToInt().coerceIn(-12, 12)
-                                val updated = bandLevels.toMutableList()
-                                updated[nearestBand] = newDb
-                                onBandLevelsChange(updated)
-                            }
                         },
                         onDrag = { change, _ ->
                             change.consume()
                             val width = size.width.toFloat()
                             val height = size.height.toFloat()
-                            val targetDb = yToDb(change.position.y, height).roundToInt().coerceIn(-12, 12)
+                            
+                            val idx = selectedNodeIndex ?: run {
+                                var closest: Int = 0
+                                var minDist = Float.MAX_VALUE
+                                frequencies.forEachIndexed { i, freq ->
+                                    val nx = freqToX(freq.toDouble(), width)
+                                    val dist = kotlin.math.abs(change.position.x - nx)
+                                    if (dist < minDist) {
+                                        minDist = dist
+                                        closest = i
+                                    }
+                                }
+                                closest
+                            }
+                            
+                            val normY = (change.position.y / height).coerceIn(0f, 1f)
+                            val gainDb = (MAX_DB - normY * (MAX_DB - MIN_DB)).roundToInt()
                             
                             val updated = bandLevels.toMutableList()
-                            if (selectedNodeIndex != null) {
-                                updated[selectedNodeIndex!!] = targetDb
-                            } else {
-                                val currentFreq = xToFreq(change.position.x, width)
-                                val nearestBand = findNearestBandIndex(currentFreq, frequencies)
-                                updated[nearestBand] = targetDb
+                            if (idx in updated.indices) {
+                                updated[idx] = gainDb.coerceIn(MIN_DB.toInt(), MAX_DB.toInt())
                             }
                             onBandLevelsChange(updated)
                         },
@@ -109,6 +112,11 @@ fun InteractiveFirequalizerCurve(
                     )
                 }
         ) {
+            val primaryColor = MaterialTheme.colorScheme.primary
+            val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+            val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
+            val outlineColor = MaterialTheme.colorScheme.outline
+
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val canvasWidth = size.width
                 val canvasHeight = size.height
@@ -119,7 +127,7 @@ fun InteractiveFirequalizerCurve(
                     val isZero = db == 0f
                     
                     drawLine(
-                        color = if (isZero) Color(0xFF00E5FF).copy(alpha = 0.35f) else Color(0xFF232838),
+                        color = if (isZero) primaryColor.copy(alpha = 0.45f) else outlineColor.copy(alpha = 0.25f),
                         start = Offset(0f, y),
                         end = Offset(canvasWidth, y),
                         strokeWidth = if (isZero) 1.5f else 1f
@@ -130,7 +138,7 @@ fun InteractiveFirequalizerCurve(
                         textMeasurer = textMeasurer,
                         text = label,
                         style = TextStyle(
-                            color = if (isZero) Color(0xFF00E5FF).copy(alpha = 0.7f) else Color(0xFF6B7280),
+                            color = if (isZero) primaryColor else onSurfaceVariantColor,
                             fontSize = 9.sp
                         ),
                         topLeft = Offset(8f, y - 14f)
@@ -141,7 +149,7 @@ fun InteractiveFirequalizerCurve(
                 gridFreqs.forEach { freq ->
                     val x = freqToX(freq, canvasWidth)
                     drawLine(
-                        color = Color(0xFF1C202E),
+                        color = outlineColor.copy(alpha = 0.15f),
                         start = Offset(x, 0f),
                         end = Offset(x, canvasHeight),
                         strokeWidth = 1f
@@ -186,8 +194,8 @@ fun InteractiveFirequalizerCurve(
                     path = fillPath,
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFF00E5FF).copy(alpha = 0.28f),
-                            Color(0xFF00E5FF).copy(alpha = 0.08f),
+                            primaryColor.copy(alpha = 0.32f),
+                            primaryColor.copy(alpha = 0.08f),
                             Color.Transparent
                         ),
                         startY = 0f,
@@ -199,9 +207,9 @@ fun InteractiveFirequalizerCurve(
                     path = splineCurvePath,
                     brush = Brush.horizontalGradient(
                         colors = listOf(
-                            Color(0xFF00B0FF),
-                            Color(0xFF00E5FF),
-                            Color(0xFF69F0AE)
+                            primaryColor.copy(alpha = 0.8f),
+                            primaryColor,
+                            primaryColor.copy(alpha = 0.9f)
                         )
                     ),
                     style = Stroke(
@@ -219,20 +227,20 @@ fun InteractiveFirequalizerCurve(
                     
                     if (isSelected) {
                         drawCircle(
-                            color = Color(0xFF00E5FF).copy(alpha = 0.35f),
+                            color = primaryColor.copy(alpha = 0.35f),
                             radius = 16f,
                             center = Offset(x, y)
                         )
                     }
                     
                     drawCircle(
-                        color = if (isSelected) Color(0xFF00E5FF) else Color(0xFF1E2433),
+                        color = if (isSelected) primaryColor else outlineColor.copy(alpha = 0.6f),
                         radius = 8f,
                         center = Offset(x, y)
                     )
                     
                     drawCircle(
-                        color = if (isSelected) Color.White else Color(0xFF00E5FF),
+                        color = if (isSelected) Color.White else primaryColor,
                         radius = 4.5f,
                         center = Offset(x, y)
                     )
@@ -242,7 +250,7 @@ fun InteractiveFirequalizerCurve(
                         textMeasurer = textMeasurer,
                         text = valueLabel,
                         style = TextStyle(
-                            color = if (isSelected) Color(0xFF00E5FF) else Color(0xFFEDF1F8),
+                            color = if (isSelected) primaryColor else onSurfaceColor,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold
                         ),
@@ -253,7 +261,7 @@ fun InteractiveFirequalizerCurve(
                         textMeasurer = textMeasurer,
                         text = labels.getOrElse(idx) { "" },
                         style = TextStyle(
-                            color = if (isSelected) Color(0xFF00E5FF) else Color(0xFF8B95A5),
+                            color = if (isSelected) primaryColor else onSurfaceVariantColor,
                             fontSize = 9.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                         ),
@@ -272,17 +280,14 @@ fun InteractiveFirequalizerCurve(
         ) {
             Text(
                 text = "Touch & drag nodes to sculpt response curve",
-                color = Color(0xFF8B95A5),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp
             )
             
             TextButton(
                 onClick = {
                     onBandLevelsChange(List(10) { 0 })
-                },
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = Color(0xFF00E5FF)
-                )
+                }
             ) {
                 Text(
                     text = "Reset Flat (0 dB)",

@@ -34,7 +34,7 @@ fun ValuePicker(
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
-        color = Color(0xFF13151D),
+        color = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,
         onClick = { showDialog = true }
     ) {
         Row(
@@ -47,14 +47,14 @@ fun ValuePicker(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    color = Color(0xFF8B95A5),
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = values.getOrElse(selectedIndex) { "" },
-                    color = Color(0xFFEDF1F8),
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -63,7 +63,7 @@ fun ValuePicker(
             }
             Text(
                 text = "CHANGE ▾",
-                color = Color(0xFF00E5FF),
+                color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 8.dp)
@@ -94,11 +94,11 @@ private fun ValuePickerDialog(
         onDismissRequest = {
             onDismissRequest()
         },
-        containerColor = Color(0xFF1A1C24),
-        titleContentColor = Color(0xFFEDF1F8),
-        textContentColor = Color(0xFFEDF1F8),
+        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surface,
+        titleContentColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
+        textContentColor = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
         title = {
-            Text(text = title)
+            Text(text = title, fontWeight = FontWeight.Bold)
         },
         text = {
             val scrollState = rememberScrollState()
@@ -107,18 +107,22 @@ private fun ValuePickerDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { internalSelectedIndex = index },
+                            .clickable { internalSelectedIndex = index }
+                            .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
                             selected = index == internalSelectedIndex,
-                            onClick = { internalSelectedIndex = index },
-                            colors = RadioButtonDefaults.colors(
-                                selectedColor = Color(0xFF00E5FF),
-                                unselectedColor = Color(0xFF9AA5B8)
-                            )
+                            onClick = { internalSelectedIndex = index }
                         )
-                        Text(text = value, color = Color(0xFFEDF1F8))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = value, 
+                            color = if (index == internalSelectedIndex) 
+                                androidx.compose.material3.MaterialTheme.colorScheme.primary 
+                            else 
+                                androidx.compose.material3.MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             }
@@ -130,7 +134,7 @@ private fun ValuePickerDialog(
                     onDismissRequest()
                 }
             ) {
-                Text("Select", color = Color(0xFF00E5FF))
+                Text("Select", fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
@@ -139,7 +143,7 @@ private fun ValuePickerDialog(
                     onDismissRequest()
                 }
             ) {
-                Text("Cancel", color = Color(0xFF9AA5B8))
+                Text("Cancel")
             }
         }
     )

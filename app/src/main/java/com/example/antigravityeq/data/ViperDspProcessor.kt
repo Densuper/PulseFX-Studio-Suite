@@ -499,7 +499,64 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {
                 right = (tanh(right * tubeDrive) + 0.08f * right * right * tubeWarmthNorm) / tubeDrive
             }
 
-            // 12. Master Gain & Channel Pan
+            // 12. FET Compressor (Dynamic Studio VCA/FET Leveling)
+            if (s.isFetCompressorEnabled) {
+                val fetThreshDb = s.fetThreshold.toFloat()
+                val fetThreshLin = 10f.pow(fetThreshDb / 20f)
+                val fetRatioFactor = 1f - (1f / maxOf(1f, (s.fetRatio + 1) * 2.0f))
+                val peakSig = max(abs(left), abs(right))
+                if (peakSig > fetThreshLin) {
+                    val excess = peakSig - fetThreshLin
+                    val compGain = (1f - (excess * fetRatioFactor)).coerceIn(0.25f, 1.0f)
+                    val makeup = 10f.pow(s.fetGain / 20f)
+                    left = left * compGain * makeup
+                    right = right * compGain * makeup
+                }
+            }
+
+            // 13. Spectrum Extension (VSE High-Frequency Re-synthesis)
+            if (s.isSpectrumExtensionEnabled && s.spectrumExtensionStrength > 0) {
+                val vseGain = (s.spectrumExtensionStrength / 4f) * 0.35f
+                val hfL = left - (bassFilterL.process(left))
+                val hfR = right - (bassFilterR.process(right))
+                val excL = (hfL * hfL * hfL) * 1.8f
+                val excR = (hfR * hfR * hfR) * 1.8f
+                left += excL * vseGain
+                right += excR * vseGain
+            }
+
+            // 14. AnalogX (Class A Warm Harmonic Injection)
+            if (s.isAnalogXEnabled) {
+                val axFactor = (s.analogXLevel + 1) * 0.08f
+                left = left + (left * left * (if (left > 0) 1f else -1f)) * axFactor
+                right = right + (right * right * (if (right > 0) 1f else -1f)) * axFactor
+            }
+
+            // 15. Headphone Surround+ (Binaural HRTF Crossfeed)
+            if (s.isHeadphoneSurroundEnabled) {
+                val vheCross = ((s.headphoneSurroundLevel + 1) / 6f) * 0.28f
+                val vheL = left * (1f - vheCross * 0.5f) + right * vheCross
+                val vheR = right * (1f - vheCross * 0.5f) + left * vheCross
+                left = vheL
+                right = vheR
+            }
+
+            // 16. Auditory Protection (Cure+ Crossfeed & Transient Softening)
+            if (s.isAuditoryProtectionEnabled) {
+                val cureCross = 0.18f
+                val cureL = left * 0.82f + right * cureCross
+                val cureR = right * 0.82f + left * cureCross
+                left = tanh(cureL * 1.05f) / 1.05f
+                right = tanh(cureR * 1.05f) / 1.05f
+            }
+
+            // 17. Speaker Optimization
+            if (s.isSpeakerOptEnabled) {
+                left = (left * 1.15f).coerceIn(-0.95f, 0.95f)
+                right = (right * 1.15f).coerceIn(-0.95f, 0.95f)
+            }
+
+            // 18. Master Gain & Channel Pan
             left = left * outGainScalar * panLeft
             right = right * outGainScalar * panRight
 

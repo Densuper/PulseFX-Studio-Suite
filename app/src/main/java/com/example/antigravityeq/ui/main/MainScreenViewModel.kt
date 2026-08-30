@@ -5,7 +5,6 @@ import android.content.Intent
 import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import com.example.antigravityeq.AudioEffectsService
-import com.example.antigravityeq.AudioStreamCaptureService
 import com.example.antigravityeq.data.EqualizerSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -238,14 +237,6 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
             } else {
                 context.startService(intent)
             }
-        } catch (e: Exception) {}
-
-        // 2. AudioStreamCaptureService (Real-Time AudioPlaybackCapture DSP Engine)
-        try {
-            val captureIntent = Intent(context, AudioStreamCaptureService::class.java).apply {
-                action = AudioStreamCaptureService.ACTION_UPDATE_SETTINGS
-            }
-            context.startService(captureIntent)
         } catch (e: Exception) {}
     }
 }

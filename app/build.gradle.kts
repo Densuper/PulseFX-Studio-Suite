@@ -15,10 +15,23 @@ android {
         versionName = "1.5.4"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("${rootProject.projectDir}/pulsefx_release.jks")
+            storePassword = "pulsefx123"
+            keyAlias = "pulsefx"
+            keyPassword = "pulsefx123"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+        debug {
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {

@@ -418,6 +418,18 @@ class AudioEffectsService : Service() {
                             }
                         }
 
+                        // Differential Surround (Haas Inter-aural Time Difference & Spatial Phase Delay Stage)
+                        var diffSurroundStageDb = 0f
+                        if (currentSettings.isDiffSurroundEnabled) {
+                            val delayRatio = (currentSettings.diffSurroundDelay.coerceAtLeast(1) / 20f).coerceIn(0.1f, 1.0f)
+                            // Haas effect decorrelation: injects out-of-phase ambient air and psychoacoustic depth
+                            when (i) {
+                                0, 1 -> diffSurroundStageDb += (2.0f * delayRatio)  // Sub-acoustic room boundary reflection
+                                5, 6 -> diffSurroundStageDb += (3.5f * delayRatio)  // Midrange Haas ear decorrelation
+                                7, 8, 9 -> diffSurroundStageDb += (6.0f * delayRatio) // Wide psychoacoustic side reflection
+                            }
+                        }
+
                         // 5. ViPER Bass Sub-Harmonic Low-End Stage (Bands 0..2)
                         var bassStageDb = 0f
                         if (currentSettings.isBassEnabled) {
@@ -551,7 +563,7 @@ class AudioEffectsService : Service() {
                         // Decoupled Harmonic Summation with Headroom Protection:
                         // If a module is NOT enabled, its contribution is strictly 0.0dB.
                         // When EQ is disabled, userEqGainDb is 0.0dB, so enabling Bass Boost only boosts bands 0..2 without flattening or touching the rest.
-                        val totalCompositeGainDb = userEqGainDb + fetStageDb + surroundStageDb + bassStageDb + clarityStageDb +
+                        val totalCompositeGainDb = userEqGainDb + fetStageDb + surroundStageDb + diffSurroundStageDb + bassStageDb + clarityStageDb +
                             convolverStageDb + tubeStageDb + vseStageDb + dynamicStageDb +
                             reverbStageDb + ddcStageDb + analogXStageDb + protectionStageDb + speakerOptStageDb
 

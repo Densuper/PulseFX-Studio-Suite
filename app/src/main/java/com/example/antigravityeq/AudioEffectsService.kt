@@ -551,17 +551,26 @@ class AudioEffectsService : Service() {
                 }
             }
 
-            // 6. Loudness Enhancer (Playback AGC Gain + Master Output Gain + Threshold Limiter Ceiling + Speaker Opt)
+            // 6. Loudness Enhancer (Playback AGC Dynamic Ratio & Gain + Master Output Gain + Threshold Limiter Ceiling + Speaker Opt)
             val le = effects.loudnessEnhancer
             if (le != null) {
-                val agcGainDb = if (isEnabled && currentSettings.isPlaybackAgcEnabled) currentSettings.playbackAgcMaxGain else 0
+                val agcGainDb = if (isEnabled && currentSettings.isPlaybackAgcEnabled) {
+                    val ratioMultiplier = when (currentSettings.playbackAgcRatio) {
+                        0 -> 1.0f  // Slight (+0% compression boost)
+                        1 -> 1.4f  // Moderate (+40% dynamic gain compression)
+                        else -> 1.85f // Extreme (+85% maximum brickwall leveling)
+                    }
+                    (currentSettings.playbackAgcMaxGain * ratioMultiplier).toInt()
+                } else {
+                    0
+                }
                 val spkOptGain = if (isEnabled && currentSettings.isSpeakerOptEnabled) 4 else 0
                 val masterGainDb = if (isEnabled && currentSettings.isLimiterEnabled) currentSettings.outputGain else 0
                 val thresholdDampening = if (isEnabled && currentSettings.isLimiterEnabled && currentSettings.limiterThreshold < 0) currentSettings.limiterThreshold * 2 else 0
                 val totalGainDb = (masterGainDb + agcGainDb + spkOptGain + thresholdDampening)
                 
                 if (isEnabled && totalGainDb != 0) {
-                    val gainMb = (totalGainDb * 100).coerceIn(-2000, 2000)
+                    val gainMb = (totalGainDb * 100).coerceIn(-2000, 2500)
                     le.setTargetGain(gainMb)
                     if (!le.enabled) le.enabled = true
                 } else {

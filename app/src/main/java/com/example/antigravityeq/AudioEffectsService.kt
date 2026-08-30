@@ -401,6 +401,16 @@ class AudioEffectsService : Service() {
                             if (i in 1..4) tubeStageDb += tubeBoost
                         }
 
+                        // Field Surround Mid/Side Spatial Matrix Stage
+                        var surroundStageDb = 0f
+                        if (currentSettings.isFieldSurroundEnabled) {
+                            val surNorm = (currentSettings.fieldSurroundStrength / 100f).coerceIn(0.1f, 1.0f)
+                            val midNorm = (currentSettings.midImageSize / 100f).coerceIn(0.1f, 1.0f)
+                            // Elevates 3D room air and vocal presence
+                            if (i in 4..6) surroundStageDb += (2.5f * midNorm) // Vocal Mid presence
+                            if (i >= 7) surroundStageDb += (3.5f * surNorm)    // Spatial Side air
+                        }
+
                         // 5. ViPER Bass Sub-Harmonic Low-End Stage (Bands 0..2)
                         var bassStageDb = 0f
                         if (currentSettings.isBassEnabled) {
@@ -534,7 +544,7 @@ class AudioEffectsService : Service() {
                         // Decoupled Harmonic Summation with Headroom Protection:
                         // If a module is NOT enabled, its contribution is strictly 0.0dB.
                         // When EQ is disabled, userEqGainDb is 0.0dB, so enabling Bass Boost only boosts bands 0..2 without flattening or touching the rest.
-                        val totalCompositeGainDb = userEqGainDb + fetStageDb + bassStageDb + clarityStageDb +
+                        val totalCompositeGainDb = userEqGainDb + fetStageDb + surroundStageDb + bassStageDb + clarityStageDb +
                             convolverStageDb + tubeStageDb + vseStageDb + dynamicStageDb +
                             reverbStageDb + ddcStageDb + analogXStageDb + protectionStageDb + speakerOptStageDb
 
@@ -581,18 +591,19 @@ class AudioEffectsService : Service() {
                 var totalSurround = 0
                 if (isEnabled && currentSettings.isFieldSurroundEnabled) {
                     val str = if (currentSettings.fieldSurroundStrength > 0) currentSettings.fieldSurroundStrength else 50
-                    totalSurround += (str * 10).coerceIn(0, 1000)
+                    // Map 0..100 slider directly to 0..1000 full hardware HRTF spatialization strength
+                    totalSurround += (str * 10).coerceIn(100, 1000)
                 }
                 if (isEnabled && currentSettings.isDiffSurroundEnabled) {
                     val delay = if (currentSettings.diffSurroundDelay > 0) currentSettings.diffSurroundDelay else 5
-                    totalSurround += (delay * 50).coerceIn(0, 850)
+                    totalSurround += (delay * 50).coerceIn(100, 950)
                 }
                 if (isEnabled && currentSettings.isHeadphoneSurroundEnabled) {
-                    totalSurround += ((currentSettings.headphoneSurroundLevel + 1) * 200).coerceIn(0, 1000)
+                    totalSurround += ((currentSettings.headphoneSurroundLevel + 1) * 200).coerceIn(200, 1000)
                 }
                 if (isEnabled && currentSettings.isReverbEnabled && currentSettings.reverbWetRatio > 0) {
                     // Feed Reverb wet ratio directly into Virtualizer spatial reflections
-                    totalSurround += (currentSettings.reverbWetRatio * 5).coerceIn(0, 500)
+                    totalSurround += (currentSettings.reverbWetRatio * 6).coerceIn(0, 600)
                 }
 
                 if (totalSurround > 0) {

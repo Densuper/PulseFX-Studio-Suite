@@ -259,13 +259,18 @@ class AudioEffectsService : Service() {
             }
             val avgMag = if (count > 0) sumMag / count else 0f
             // Convert to normalized dB level in range -12dB to +12dB
-            val db = if (avgMag > 1f) {
+            val db = if (avgMag > 1.5f) {
                 (20f * kotlin.math.log10(avgMag / 128f)).coerceIn(-12f, 12f)
             } else {
                 -12f
             }
-            // Smooth with previous level (exponential moving average for silky animation)
-            newLevels[b] = (liveFftLevels[b] * 0.4f + db * 0.6f)
+            // Smooth natural decay (slow, organic movement tracking real output)
+            val current = liveFftLevels[b]
+            newLevels[b] = if (db > current) {
+                current * 0.70f + db * 0.30f // Gentle rise
+            } else {
+                current * 0.90f + db * 0.10f // Smooth slow natural decay
+            }
         }
         liveFftLevels = newLevels
     }

@@ -68,7 +68,7 @@ fun MainScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "v1.2.3 • Decoupled Multi-Stage DSP Release",
+                            text = "v1.3.1 • Sovereign DSP Audio Suite",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -149,7 +149,7 @@ fun MainScreen(
                 title = {
                     Column {
                         Text("PulseFX Studio", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("v1.3.0 • Sovereign DSP Audio Suite", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        Text("v1.3.1 • Sovereign DSP Audio Suite", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                 },
                 actions = {
@@ -225,99 +225,7 @@ fun MainScreen(
                 .padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // 1. TOP CONNECTED DEVICE & AUDIO ROUTE CARD
-            val audioManager = androidx.compose.ui.platform.LocalContext.current.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
-            val isBluetoothOn = audioManager?.isBluetoothA2dpOn == true || audioManager?.isBluetoothScoOn == true
-            val isHeadsetOn = audioManager?.isWiredHeadsetOn == true
-            val connectedDeviceName = when {
-                isBluetoothOn -> "CMF Buds / Bluetooth Audio"
-                isHeadsetOn -> "Wired Headset / USB-C DAC"
-                else -> "Internal Stereo Speakers"
-            }
-            val routeBadge = when {
-                isBluetoothOn -> "BT A2DP"
-                isHeadsetOn -> "USB/DAC"
-                else -> "SPEAKER"
-            }
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    if (settings.isEnabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                )
-            ) {
-                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Box(
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .background(MaterialTheme.colorScheme.primaryContainer, androidx.compose.foundation.shape.CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = if (isBluetoothOn) "🎧" else if (isHeadsetOn) "🎚️" else "🔊",
-                                    fontSize = 14.sp
-                                )
-                            }
-                            Column {
-                                Text(
-                                    text = connectedDeviceName,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "48 kHz / 24-bit PCM • 32-Bit Float Engine Active",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    if (settings.isEnabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
-                                    androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
-                                )
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = routeBadge,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp,
-                                color = if (settings.isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    // Pulsing Electric Circuit Stream Line
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(2.dp)
-                            .background(
-                                androidx.compose.ui.graphics.Brush.horizontalGradient(
-                                    listOf(
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                        MaterialTheme.colorScheme.primary,
-                                        MaterialTheme.colorScheme.tertiary,
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                                    )
-                                )
-                            )
-                    )
-                }
-            }
-
-            // 2. MASTER LIMITER (True-Peak 0 dBFS Ceiling & Gain)
+            // Master Limiter (Original #1)
             EffectCard(
                 badgeText = "OUT",
                 name = "Master limiter",
@@ -352,62 +260,7 @@ fun MainScreen(
                 }
             }
 
-            // 3. TOP-EXPANDED 10-BAND PARAGRAPHIC EQUALIZER (With Live 60 FPS RTA Dance)
-            EffectCard(
-                badgeText = "EQ",
-                name = "FIR equalizer",
-                enabled = settings.isEqEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isEqEnabled = it) } }
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    ValuePicker(
-                        title = "Preset",
-                        values = EqualizerSettings.EQ_PRESET_NAMES.toTypedArray(),
-                        selectedIndex = settings.eqPreset,
-                        onSelectedIndexChange = { idx ->
-                            val presetValues = EqualizerSettings.EQ_PRESET_VALUES.getOrElse(idx) { List(10) { 0 } }
-                            viewModel.updateSettings { s ->
-                                s.copy(
-                                    eqPreset = idx,
-                                    bandLevels = presetValues
-                                )
-                            }
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    InteractiveFirequalizerCurve(
-                        bandLevels = settings.bandLevels,
-                        onBandLevelsChange = { updatedLevels ->
-                            viewModel.updateSettings { s ->
-                                s.copy(
-                                    bandLevels = updatedLevels,
-                                    eqPreset = 0 // Custom
-                                )
-                            }
-                        },
-                        isEqEnabled = settings.isEqEnabled,
-                        liveLevels = liveFftLevels
-                    )
-                }
-            }
-
-            // Pulsing Electric Sideline Divider
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(
-                        androidx.compose.ui.graphics.Brush.horizontalGradient(
-                            listOf(
-                                androidx.compose.ui.graphics.Color.Transparent,
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                                androidx.compose.ui.graphics.Color.Transparent
-                            )
-                        )
-                    )
-            )
-
-            // 4. Playback Gain Control (AGC)
+            // Playback Gain Control (Original #2)
             EffectCard(
                 badgeText = "AGC",
                 name = "Playback gain control",
@@ -434,7 +287,7 @@ fun MainScreen(
                 }
             }
 
-            // 5. FET Compressor
+            // FET Compressor (Original #3)
             EffectCard(
                 badgeText = "FET",
                 name = "FET compressor",
@@ -460,7 +313,7 @@ fun MainScreen(
                 }
             }
 
-            // 6. ViPER-DDC
+            // ViPER-DDC (Original #4)
             EffectCard(
                 badgeText = "DDC",
                 name = "ViPER-DDC",
@@ -475,7 +328,7 @@ fun MainScreen(
                 )
             }
 
-            // 7. Spectrum Extension
+            // Spectrum Extension (Original #5)
             EffectCard(
                 badgeText = "VSE",
                 name = "Spectrum extension",
@@ -489,6 +342,45 @@ fun MainScreen(
                     onValueChange = { v -> viewModel.updateSettings { s -> s.copy(spectrumExtensionStrength = v) } },
                     valueRange = 0..4
                 )
+            }
+
+            // FIR Equalizer (Original #6 - Pure Clean Layout with Smooth Natural Real-Time Movement)
+            EffectCard(
+                badgeText = "EQ",
+                name = "FIR equalizer",
+                enabled = settings.isEqEnabled,
+                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isEqEnabled = it) } }
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    ValuePicker(
+                        title = "Preset",
+                        values = EqualizerSettings.EQ_PRESET_NAMES.toTypedArray(),
+                        selectedIndex = settings.eqPreset,
+                        onSelectedIndexChange = { idx ->
+                            val presetValues = EqualizerSettings.EQ_PRESET_VALUES.getOrElse(idx) { List(10) { 0 } }
+                            viewModel.updateSettings { s ->
+                                s.copy(
+                                    eqPreset = idx,
+                                    bandLevels = presetValues
+                                )
+                            }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    InteractiveFirequalizerCurve(
+                        bandLevels = settings.bandLevels,
+                        onBandLevelsChange = { updatedLevels ->
+                            viewModel.updateSettings { s ->
+                                s.copy(
+                                    bandLevels = updatedLevels,
+                                    eqPreset = 0 // Custom
+                                )
+                            }
+                        },
+                        isEqEnabled = settings.isEqEnabled,
+                        liveLevels = liveFftLevels
+                    )
+                }
             }
 
             // 8. Convolver

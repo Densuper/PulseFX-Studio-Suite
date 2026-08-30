@@ -328,16 +328,22 @@ class AudioEffectsService : Service() {
                             fetStageDb += currentSettings.fetGain.toFloat()
                         }
 
-                        // 2. High-Frequency Clarity & Harmonic Overtones (Isolated High-End Stage, Bands 5..9)
+                        // 2. High-Frequency Clarity & Harmonic Overtones (Isolated High-End Exciter Stage, Bands 6..9)
                         var clarityStageDb = 0f
-                        if (currentSettings.isClarityEnabled && i >= 5) {
-                            val clarityGain = if (currentSettings.clarity > 0) currentSettings.clarity else 500
-                            val clarityBoost = (clarityGain / 1000f) * (when (currentSettings.clarityMode) {
-                                0 -> 4.5f // Natural Air
-                                1 -> 7.5f // Ozone+ Excite
-                                else -> 11.0f // XHiFi Pro
-                            }) * ((i - 4) / 5f)
-                            clarityStageDb += clarityBoost
+                        if (currentSettings.isClarityEnabled) {
+                            val clarityRatio = (currentSettings.clarity / 1000f).coerceIn(0.1f, 1.0f)
+                            val modeMultiplier = when (currentSettings.clarityMode) {
+                                0 -> 6.0f  // Natural: Crisp high-shelf acoustic sheen (+6dB)
+                                1 -> 10.0f // Ozone+: Dynamic exciter with vocal transient presence (+10dB)
+                                else -> 14.0f // XHiFi Pro: Pure crystalline harmonic restoration (+14dB)
+                            }
+                            when (i) {
+                                5 -> clarityStageDb += (0.25f * clarityRatio * modeMultiplier) // 1 kHz upper body
+                                6 -> clarityStageDb += (0.50f * clarityRatio * modeMultiplier) // 2 kHz presence
+                                7 -> clarityStageDb += (0.75f * clarityRatio * modeMultiplier) // 4 kHz transient attack
+                                8 -> clarityStageDb += (0.90f * clarityRatio * modeMultiplier) // 8 kHz cymbal sparkle
+                                9 -> clarityStageDb += (1.00f * clarityRatio * modeMultiplier) // 16 kHz crystalline studio air
+                            }
                         }
 
                         // 3. Convolver & Analog Tape/Console Coloration (Studio Impulse Response Stage)

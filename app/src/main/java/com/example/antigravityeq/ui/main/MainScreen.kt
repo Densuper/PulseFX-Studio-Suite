@@ -68,7 +68,7 @@ fun MainScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "v1.3.1 • Sovereign DSP Audio Suite",
+                            text = "v1.3.2 • Sovereign DSP Audio Suite",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -149,7 +149,7 @@ fun MainScreen(
                 title = {
                     Column {
                         Text("PulseFX Studio", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("v1.3.1 • Sovereign DSP Audio Suite", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        Text("v1.3.2 • Sovereign DSP Audio Suite", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                 },
                 actions = {
@@ -225,6 +225,82 @@ fun MainScreen(
                 .padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Top Connected Earphones / Sources Card
+            val audioManager = androidx.compose.ui.platform.LocalContext.current.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
+            val isBluetoothOn = audioManager?.isBluetoothA2dpOn == true || audioManager?.isBluetoothScoOn == true
+            val isHeadsetOn = audioManager?.isWiredHeadsetOn == true
+            val connectedDeviceName = when {
+                isBluetoothOn -> "CMF Buds / Bluetooth Audio"
+                isHeadsetOn -> "Wired Headset / USB-C DAC"
+                else -> "Internal Stereo Speakers"
+            }
+            val routeBadge = when {
+                isBluetoothOn -> "BT A2DP"
+                isHeadsetOn -> "USB/DAC"
+                else -> "SPEAKER"
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (settings.isEnabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (isBluetoothOn) "🎧" else if (isHeadsetOn) "🎚️" else "🔊",
+                                fontSize = 15.sp
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = connectedDeviceName,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "48 kHz / 24-bit PCM • 32-Bit Float Engine Active",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                if (settings.isEnabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
+                                androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = routeBadge,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp,
+                            color = if (settings.isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
             // Master Limiter (Original #1)
             EffectCard(
                 badgeText = "OUT",

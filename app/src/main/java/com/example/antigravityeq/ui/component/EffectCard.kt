@@ -42,20 +42,45 @@ fun EffectCard(
         label = "expand_rotation"
     )
 
-    Card(
+    val glowAlpha by animateFloatAsState(
+        targetValue = if (enabled == true) 1f else 0f,
+        label = "glow_alpha"
+    )
+
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = if (enabled == true) 
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.35f) 
-            else 
-                MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
-        )
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        // Left Straight Glowing Electric Connector Line
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(48.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(
+                    if (glowAlpha > 0.05f)
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.85f * glowAlpha)
+                    else
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+                )
+        )
+
+        Spacer(modifier = Modifier.width(6.dp))
+
+        Card(
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            border = androidx.compose.foundation.BorderStroke(
+                width = 1.dp,
+                color = if (enabled == true) 
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.45f) 
+                else 
+                    MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+            )
+        ) {
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -147,5 +172,22 @@ fun EffectCard(
             }
         }
     }
+
+    Spacer(modifier = Modifier.width(6.dp))
+
+    // Right Straight Glowing Electric Connector Line
+    Box(
+        modifier = Modifier
+            .width(4.dp)
+            .height(48.dp)
+            .clip(RoundedCornerShape(2.dp))
+            .background(
+                if (glowAlpha > 0.05f)
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.85f * glowAlpha)
+                else
+                    MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+            )
+    )
+}
 }
 

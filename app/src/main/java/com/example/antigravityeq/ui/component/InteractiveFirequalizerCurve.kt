@@ -49,7 +49,7 @@ fun InteractiveFirequalizerCurve(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(230.dp)
+                .height(240.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .pointerInput(bandLevels) {
@@ -139,9 +139,10 @@ fun InteractiveFirequalizerCurve(
                         text = label,
                         style = TextStyle(
                             color = if (isZero) primaryColor else onSurfaceVariantColor,
-                            fontSize = 9.sp
+                            fontSize = 9.sp,
+                            fontWeight = if (isZero) FontWeight.Bold else FontWeight.Normal
                         ),
-                        topLeft = Offset(8f, y - 14f)
+                        topLeft = Offset(6f, (y - 12f).coerceIn(4f, canvasHeight - 32f))
                     )
                 }
                 
@@ -151,7 +152,7 @@ fun InteractiveFirequalizerCurve(
                     drawLine(
                         color = outlineColor.copy(alpha = 0.15f),
                         start = Offset(x, 0f),
-                        end = Offset(x, canvasHeight),
+                        end = Offset(x, canvasHeight - 22f),
                         strokeWidth = 1f
                     )
                 }
@@ -177,7 +178,7 @@ fun InteractiveFirequalizerCurve(
                     val sampledSpline = computeCatmullRomSpline(points, steps = 16)
                     if (sampledSpline.isNotEmpty()) {
                         splineCurvePath.moveTo(sampledSpline[0].x, sampledSpline[0].y)
-                        fillPath.moveTo(sampledSpline[0].x, canvasHeight)
+                        fillPath.moveTo(sampledSpline[0].x, canvasHeight - 20f)
                         fillPath.lineTo(sampledSpline[0].x, sampledSpline[0].y)
                         
                         for (i in 1 until sampledSpline.size) {
@@ -185,7 +186,7 @@ fun InteractiveFirequalizerCurve(
                             fillPath.lineTo(sampledSpline[i].x, sampledSpline[i].y)
                         }
                         
-                        fillPath.lineTo(canvasWidth, canvasHeight)
+                        fillPath.lineTo(canvasWidth, canvasHeight - 20f)
                         fillPath.close()
                     }
                 }
@@ -199,7 +200,7 @@ fun InteractiveFirequalizerCurve(
                             Color.Transparent
                         ),
                         startY = 0f,
-                        endY = canvasHeight
+                        endY = canvasHeight - 20f
                     )
                 )
                 
@@ -246,6 +247,7 @@ fun InteractiveFirequalizerCurve(
                     )
                     
                     val valueLabel = if (gain > 0) "+${gain.toInt()}" else "${gain.toInt()}"
+                    val valYOffset = if (y < 35f) y + 10f else y - 20f
                     drawText(
                         textMeasurer = textMeasurer,
                         text = valueLabel,
@@ -254,7 +256,7 @@ fun InteractiveFirequalizerCurve(
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold
                         ),
-                        topLeft = Offset(x - 8f, y - 22f)
+                        topLeft = Offset(x - 10f, valYOffset)
                     )
                     
                     drawText(
@@ -263,9 +265,9 @@ fun InteractiveFirequalizerCurve(
                         style = TextStyle(
                             color = if (isSelected) primaryColor else onSurfaceVariantColor,
                             fontSize = 9.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                         ),
-                        topLeft = Offset(x - 8f, canvasHeight - 18f)
+                        topLeft = Offset(x - 8f, canvasHeight - 24f)
                     )
                 }
             }
@@ -314,16 +316,18 @@ private fun xToFreq(x: Float, width: Float): Double {
 }
 
 private fun dbToY(db: Float, height: Float): Float {
-    val padding = 24f
-    val effectiveHeight = height - (padding * 2)
+    val topPad = 30f
+    val bottomPad = 42f
+    val effectiveHeight = height - (topPad + bottomPad)
     val norm = (db - MIN_DB) / (MAX_DB - MIN_DB)
-    return height - padding - (norm * effectiveHeight)
+    return height - bottomPad - (norm * effectiveHeight)
 }
 
 private fun yToDb(y: Float, height: Float): Float {
-    val padding = 24f
-    val effectiveHeight = height - (padding * 2)
-    val norm = 1f - ((y - padding) / effectiveHeight).coerceIn(0f, 1f)
+    val topPad = 30f
+    val bottomPad = 42f
+    val effectiveHeight = height - (topPad + bottomPad)
+    val norm = 1f - ((y - topPad) / effectiveHeight).coerceIn(0f, 1f)
     return MIN_DB + norm * (MAX_DB - MIN_DB)
 }
 

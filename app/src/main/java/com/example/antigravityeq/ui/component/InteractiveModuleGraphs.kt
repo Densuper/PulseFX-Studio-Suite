@@ -39,11 +39,14 @@ fun InteractiveBassCurveGraph(
     modifier: Modifier = Modifier
 ) {
     val textMeasurer = rememberTextMeasurer()
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val outlineColor = MaterialTheme.colorScheme.outline
+    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
     
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(150.dp)
+            .height(160.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .pointerInput(frequencyHz, gainBoost) {
@@ -73,26 +76,26 @@ fun InteractiveBassCurveGraph(
             val hzMarkers = listOf(30, 40, 50, 60, 70, 80, 100)
             hzMarkers.forEach { hz ->
                 val normX = (hz - 30f) / 70f
-                val x = normX * w
+                val x = normX * (w - 40f) + 20f
                 drawLine(
-                    color = Color(0xFF1E2333),
+                    color = outlineColor.copy(alpha = 0.2f),
                     start = Offset(x, 0f),
-                    end = Offset(x, h),
+                    end = Offset(x, h - 28f),
                     strokeWidth = 1f
                 )
                 drawText(
                     textMeasurer = textMeasurer,
                     text = "${hz}Hz",
-                    style = TextStyle(color = Color(0xFF6B7280), fontSize = 8.sp),
-                    topLeft = Offset(x - 10f, h - 14f)
+                    style = TextStyle(color = onSurfaceVariantColor, fontSize = 8.sp),
+                    topLeft = Offset((x - 10f).coerceIn(4f, w - 30f), h - 20f)
                 )
             }
             
             // Resonant Bass Curve synthesis
             val centerNormX = (frequencyHz - 30f) / 70f
-            val centerX = centerNormX * w
+            val centerX = centerNormX * (w - 40f) + 20f
             val peakNormY = (gainBoost / 1000f).coerceIn(0.1f, 1f)
-            val centerY = h - (peakNormY * (h - 35f)) - 15f
+            val centerY = h - (peakNormY * (h - 45f)) - 25f
             
             val curvePath = Path()
             val fillPath = Path()
@@ -103,13 +106,13 @@ fun InteractiveBassCurveGraph(
             }
             
             val steps = 60
-            fillPath.moveTo(0f, h)
+            fillPath.moveTo(0f, h - 20f)
             
             for (i in 0..steps) {
                 val x = (i.toFloat() / steps) * w
                 val dist = abs(x - centerX)
                 val bell = exp(- (dist * dist) / (2f * qWidth * qWidth))
-                val y = h - 20f - (bell * (h - 35f - centerY + 15f))
+                val y = h - 25f - (bell * (h - 45f - centerY + 20f))
                 
                 if (i == 0) {
                     curvePath.moveTo(x, y)
@@ -120,7 +123,7 @@ fun InteractiveBassCurveGraph(
                 }
             }
             
-            fillPath.lineTo(w, h)
+            fillPath.lineTo(w, h - 20f)
             fillPath.close()
             
             // Area gradient
@@ -128,10 +131,12 @@ fun InteractiveBassCurveGraph(
                 path = fillPath,
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF00E5FF).copy(alpha = 0.30f),
-                        Color(0xFF00E5FF).copy(alpha = 0.05f),
+                        primaryColor.copy(alpha = 0.30f),
+                        primaryColor.copy(alpha = 0.05f),
                         Color.Transparent
-                    )
+                    ),
+                    startY = 0f,
+                    endY = h - 20f
                 )
             )
             
@@ -139,19 +144,19 @@ fun InteractiveBassCurveGraph(
             drawPath(
                 path = curvePath,
                 brush = Brush.horizontalGradient(
-                    colors = listOf(Color(0xFF00B0FF), Color(0xFF00E5FF))
+                    colors = listOf(primaryColor.copy(alpha = 0.8f), primaryColor)
                 ),
                 style = Stroke(width = 3f, cap = StrokeCap.Round)
             )
             
             // Peak handle circle
             drawCircle(
-                color = Color(0xFF00E5FF).copy(alpha = 0.35f),
+                color = primaryColor.copy(alpha = 0.35f),
                 radius = 16f,
                 center = Offset(centerX, centerY)
             )
             drawCircle(
-                color = Color(0xFF00E5FF),
+                color = primaryColor,
                 radius = 7f,
                 center = Offset(centerX, centerY)
             )
@@ -162,11 +167,12 @@ fun InteractiveBassCurveGraph(
             )
             
             val readout = "${frequencyHz}Hz • +${gainBoost / 55}dB"
+            val readY = if (centerY < 30f) centerY + 12f else centerY - 24f
             drawText(
                 textMeasurer = textMeasurer,
                 text = readout,
-                style = TextStyle(color = Color(0xFF00E5FF), fontSize = 10.sp, fontWeight = FontWeight.Bold),
-                topLeft = Offset(max(10f, min(centerX - 35f, w - 85f)), max(8f, centerY - 24f))
+                style = TextStyle(color = primaryColor, fontSize = 10.sp, fontWeight = FontWeight.Bold),
+                topLeft = Offset(centerX.coerceIn(40f, w - 85f) - 35f, readY)
             )
         }
     }
@@ -184,11 +190,14 @@ fun InteractiveClarityCurveGraph(
     modifier: Modifier = Modifier
 ) {
     val textMeasurer = rememberTextMeasurer()
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val outlineColor = MaterialTheme.colorScheme.outline
+    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
     
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(140.dp)
+            .height(150.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .pointerInput(clarityGain) {
@@ -208,37 +217,36 @@ fun InteractiveClarityCurveGraph(
             // Grid lines
             val kMarkers = listOf("2kHz", "4kHz", "8kHz", "12kHz", "16kHz", "20kHz")
             kMarkers.forEachIndexed { idx, label ->
-                val x = (idx.toFloat() / (kMarkers.size - 1)) * w
+                val x = idx.toFloat() / (kMarkers.size - 1) * (w - 44f) + 22f
                 drawLine(
-                    color = Color(0xFF1E2333),
+                    color = outlineColor.copy(alpha = 0.2f),
                     start = Offset(x, 0f),
-                    end = Offset(x, h),
+                    end = Offset(x, h - 28f),
                     strokeWidth = 1f
                 )
                 drawText(
                     textMeasurer = textMeasurer,
                     text = label,
-                    style = TextStyle(color = Color(0xFF6B7280), fontSize = 8.sp),
-                    topLeft = Offset(max(4f, x - 12f), h - 14f)
+                    style = TextStyle(color = onSurfaceVariantColor, fontSize = 8.sp),
+                    topLeft = Offset((x - 12f).coerceIn(4f, w - 32f), h - 20f)
                 )
             }
             
             // High-shelf harmonic curve
             val shelfGainNorm = (clarityGain / 1000f).coerceIn(0.05f, 1f)
-            val shelfHeight = shelfGainNorm * (h - 40f)
-            val curveY = h - 20f - shelfHeight
+            val shelfHeight = shelfGainNorm * (h - 50f)
+            val curveY = h - 25f - shelfHeight
             
             val curvePath = Path()
             val fillPath = Path()
             
-            fillPath.moveTo(0f, h)
+            fillPath.moveTo(0f, h - 20f)
             val steps = 50
             for (i in 0..steps) {
                 val x = (i.toFloat() / steps) * w
-                // Sigmoid / High-shelf rise from 3kHz (x=0.2) to 12kHz (x=0.7)
                 val normX = (x / w)
                 val shelfFactor = 1f / (1f + exp(- (normX - 0.45f) * 10f))
-                val y = h - 20f - (shelfFactor * shelfHeight)
+                val y = h - 25f - (shelfFactor * shelfHeight)
                 
                 if (i == 0) {
                     curvePath.moveTo(x, y)
@@ -249,46 +257,54 @@ fun InteractiveClarityCurveGraph(
                 }
             }
             
-            fillPath.lineTo(w, h)
+            fillPath.lineTo(w, h - 20f)
             fillPath.close()
             
             drawPath(
                 path = fillPath,
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF69F0AE).copy(alpha = 0.28f),
-                        Color(0xFF69F0AE).copy(alpha = 0.05f),
+                        primaryColor.copy(alpha = 0.30f),
+                        primaryColor.copy(alpha = 0.05f),
                         Color.Transparent
-                    )
+                    ),
+                    startY = 0f,
+                    endY = h - 20f
                 )
             )
             
             drawPath(
                 path = curvePath,
                 brush = Brush.horizontalGradient(
-                    colors = listOf(Color(0xFF00E5FF), Color(0xFF69F0AE))
+                    colors = listOf(primaryColor.copy(alpha = 0.8f), primaryColor)
                 ),
                 style = Stroke(width = 3f, cap = StrokeCap.Round)
             )
             
-            val handleX = w * 0.85f
+            val handleX = (w - 44f) * 0.85f + 22f
             drawCircle(
-                color = Color(0xFF69F0AE).copy(alpha = 0.35f),
+                color = primaryColor.copy(alpha = 0.35f),
                 radius = 16f,
                 center = Offset(handleX, curveY)
             )
             drawCircle(
-                color = Color(0xFF69F0AE),
+                color = primaryColor,
                 radius = 7f,
+                center = Offset(handleX, curveY)
+            )
+            drawCircle(
+                color = Color.White,
+                radius = 3.5f,
                 center = Offset(handleX, curveY)
             )
             
             val readout = "Clarity: +${clarityGain / 70}dB"
+            val readY = if (curveY < 30f) curveY + 12f else curveY - 22f
             drawText(
                 textMeasurer = textMeasurer,
                 text = readout,
-                style = TextStyle(color = Color(0xFF69F0AE), fontSize = 10.sp, fontWeight = FontWeight.Bold),
-                topLeft = Offset(handleX - 70f, max(8f, curveY - 22f))
+                style = TextStyle(color = primaryColor, fontSize = 10.sp, fontWeight = FontWeight.Bold),
+                topLeft = Offset((handleX - 70f).coerceIn(10f, w - 100f), readY)
             )
         }
     }
@@ -308,13 +324,16 @@ fun InteractiveCompressorGraph(
     modifier: Modifier = Modifier
 ) {
     val textMeasurer = rememberTextMeasurer()
+    val tertiaryColor = MaterialTheme.colorScheme.tertiary
+    val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
+    val outlineColor = MaterialTheme.colorScheme.outline
     
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(150.dp)
+            .height(160.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(surfaceVariantColor)
             .pointerInput(thresholdDb, ratio) {
                 detectDragGestures { change, _ ->
                     change.consume()
@@ -340,33 +359,33 @@ fun InteractiveCompressorGraph(
             
             // Linear 1:1 Reference Line (Gray Dashed)
             drawLine(
-                color = Color(0xFF282E40),
-                start = Offset(0f, h),
-                end = Offset(w, 0f),
+                color = outlineColor.copy(alpha = 0.35f),
+                start = Offset(20f, h - 20f),
+                end = Offset(w - 20f, 20f),
                 strokeWidth = 1.5f
             )
             
             // Threshold coordinate
             val threshNorm = ((thresholdDb - (-40f)) / 40f).coerceIn(0f, 1f)
-            val threshX = threshNorm * w
-            val threshY = h - (threshNorm * h)
+            val threshX = threshNorm * (w - 40f) + 20f
+            val threshY = (h - 20f) - (threshNorm * (h - 40f))
             
             // Draw Threshold Guideline
             drawLine(
-                color = Color(0xFFFFB74D).copy(alpha = 0.4f),
-                start = Offset(threshX, 0f),
-                end = Offset(threshX, h),
+                color = tertiaryColor.copy(alpha = 0.4f),
+                start = Offset(threshX, 12f),
+                end = Offset(threshX, h - 12f),
                 strokeWidth = 1f
             )
             
             // Compression Transfer Curve with Makeup Gain
-            val makeupOffset = (makeupGainDb / 18f) * (h * 0.25f)
+            val makeupOffset = (makeupGainDb / 18f) * (h * 0.18f)
             val compPath = Path()
             val fillPath = Path()
             
-            compPath.moveTo(0f, h - makeupOffset)
-            fillPath.moveTo(0f, h)
-            fillPath.lineTo(0f, h - makeupOffset)
+            compPath.moveTo(20f, h - 20f - makeupOffset)
+            fillPath.moveTo(20f, h - 20f)
+            fillPath.lineTo(20f, h - 20f - makeupOffset)
             
             // Up to threshold: 1:1 slope
             compPath.lineTo(threshX, threshY - makeupOffset)
@@ -374,41 +393,43 @@ fun InteractiveCompressorGraph(
             
             // Above threshold: 1:Ratio slope
             val slope = 1f / max(1f, ratio.toFloat())
-            val remainingW = w - threshX
+            val remainingW = (w - 20f) - threshX
             val endY = (threshY - (remainingW * slope)) - makeupOffset
             
-            compPath.lineTo(w, endY)
-            fillPath.lineTo(w, endY)
-            fillPath.lineTo(w, h)
+            compPath.lineTo(w - 20f, endY)
+            fillPath.lineTo(w - 20f, endY)
+            fillPath.lineTo(w - 20f, h - 20f)
             fillPath.close()
             
             drawPath(
                 path = fillPath,
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFFFFB74D).copy(alpha = 0.25f),
-                        Color(0xFFFFB74D).copy(alpha = 0.05f),
+                        tertiaryColor.copy(alpha = 0.25f),
+                        tertiaryColor.copy(alpha = 0.05f),
                         Color.Transparent
-                    )
+                    ),
+                    startY = 12f,
+                    endY = h - 20f
                 )
             )
             
             drawPath(
                 path = compPath,
                 brush = Brush.horizontalGradient(
-                    colors = listOf(Color(0xFFFFB74D), Color(0xFFFF8A65))
+                    colors = listOf(tertiaryColor, tertiaryColor.copy(alpha = 0.85f))
                 ),
                 style = Stroke(width = 3.5f, cap = StrokeCap.Round)
             )
             
             // Threshold Node Handle
             drawCircle(
-                color = Color(0xFFFFB74D).copy(alpha = 0.35f),
+                color = tertiaryColor.copy(alpha = 0.35f),
                 radius = 16f,
                 center = Offset(threshX, threshY - makeupOffset)
             )
             drawCircle(
-                color = Color(0xFFFFB74D),
+                color = tertiaryColor,
                 radius = 7f,
                 center = Offset(threshX, threshY - makeupOffset)
             )
@@ -418,12 +439,12 @@ fun InteractiveCompressorGraph(
                 center = Offset(threshX, threshY - makeupOffset)
             )
             
-            // Readout info
+            // Readout info with protected boundaries
             drawText(
                 textMeasurer = textMeasurer,
                 text = "Thresh: ${thresholdDb}dB • ${ratio}:1 Ratio",
-                style = TextStyle(color = Color(0xFFFFB74D), fontSize = 10.sp, fontWeight = FontWeight.Bold),
-                topLeft = Offset(12f, 10f)
+                style = TextStyle(color = tertiaryColor, fontSize = 10.sp, fontWeight = FontWeight.Bold),
+                topLeft = Offset(16f, 12f)
             )
         }
     }

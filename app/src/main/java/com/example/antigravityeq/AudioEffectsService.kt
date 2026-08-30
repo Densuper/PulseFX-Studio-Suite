@@ -711,9 +711,6 @@ class AudioEffectsService : Service() {
                     if (!it.enabled) it.enabled = true
                 }
             }
-                    if (!it.enabled) it.enabled = true
-                }
-            }
 
             // 6. Loudness Enhancer (Playback AGC Dynamic Ratio & Gain + Master Output Gain + Threshold Limiter Ceiling + Speaker Opt)
             val le = effects.loudnessEnhancer

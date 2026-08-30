@@ -28,6 +28,15 @@ class AudioEffectsService : Service() {
     
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    private val sessionScannerRunnable = object : Runnable {
+        override fun run() {
+            if (currentSettings.isEnabled) {
+                scanActiveSessions()
+            }
+            mainHandler.postDelayed(this, 3000)
+        }
+    }
+
     companion object {
         private const val TAG = "ViPERAudioEffects"
         private const val CHANNEL_ID = "AntigravityViPERChannel"

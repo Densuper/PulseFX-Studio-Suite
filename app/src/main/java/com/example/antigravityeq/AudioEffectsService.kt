@@ -176,29 +176,43 @@ class AudioEffectsService : Service() {
 
         Log.d(TAG, "Hooking audio stream session: $sessionId")
         val effects = AudioSessionEffects(sessionId)
+        
         try {
             effects.equalizer = Equalizer(1000, sessionId)
+        } catch (e: Exception) {
+            Log.w(TAG, "Equalizer unavailable for session $sessionId: $e")
+        }
+
+        try {
             effects.bassBoost = BassBoost(1000, sessionId)
+        } catch (e: Exception) {
+            Log.w(TAG, "BassBoost unavailable for session $sessionId: $e")
+        }
+
+        try {
             effects.virtualizer = Virtualizer(1000, sessionId)
-            
+        } catch (e: Exception) {
+            Log.w(TAG, "Virtualizer unavailable for session $sessionId: $e")
+        }
+        
+        try {
+            effects.environmentalReverb = EnvironmentalReverb(1000, sessionId)
+        } catch (e: Exception) {
+            Log.w(TAG, "EnvironmentalReverb not supported directly, falling back to PresetReverb: $e")
             try {
-                effects.environmentalReverb = EnvironmentalReverb(1000, sessionId)
+                effects.presetReverb = PresetReverb(1000, sessionId)
+            } catch (pe: Exception) {
+                Log.w(TAG, "PresetReverb unavailable for session $sessionId: $pe")
+            }
+        }
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            try {
+                effects.loudnessEnhancer = LoudnessEnhancer(sessionId)
             } catch (e: Exception) {
-                Log.w(TAG, "EnvironmentalReverb not supported directly, falling back to PresetReverb: $e")
-                try {
-                    effects.presetReverb = PresetReverb(1000, sessionId)
-                } catch (pe: Exception) {
-                    Log.w(TAG, "PresetReverb unavailable for session $sessionId")
-                }
+                Log.w(TAG, "LoudnessEnhancer unavailable for session $sessionId: $e")
             }
-            
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                try {
-                    effects.loudnessEnhancer = LoudnessEnhancer(sessionId)
-                } catch (e: Exception) {
-                    Log.w(TAG, "LoudnessEnhancer unavailable for session $sessionId")
-                }
-            }
+        }
 
             // Attach Real-Time Visualizer for Dynamic Spectral FFT Extraction
             try {

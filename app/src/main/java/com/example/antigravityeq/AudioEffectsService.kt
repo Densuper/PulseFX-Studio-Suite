@@ -610,14 +610,26 @@ class AudioEffectsService : Service() {
                             }
                         }
 
-                        // Decoupled Harmonic Summation with Headroom Protection:
+                        // 13. Decoupled Harmonic Summation with Automatic Dynamic Studio Headroom Gain Staging:
                         // If a module is NOT enabled, its contribution is strictly 0.0dB.
                         // When EQ is disabled, userEqGainDb is 0.0dB, so enabling Bass Boost only boosts bands 0..2 without flattening or touching the rest.
-                        val totalCompositeGainDb = userEqGainDb + fetStageDb + surroundStageDb + diffSurroundStageDb + vheStageDb + bassStageDb + clarityStageDb +
+                        var rawCompositeGainDb = userEqGainDb + fetStageDb + surroundStageDb + diffSurroundStageDb + vheStageDb + bassStageDb + clarityStageDb +
                             convolverStageDb + tubeStageDb + vseStageDb + dynamicStageDb +
                             reverbStageDb + ddcStageDb + analogXStageDb + protectionStageDb + speakerOptStageDb
 
-                        val levelMB = (totalCompositeGainDb * 100f).coerceIn(-1500f, 1500f).toInt().toShort()
+                        // Studio Headroom Compression / Soft-Curve Normalization:
+                        // When multiple heavy saturation modules are active simultaneously, raw gain can reach +30dB to +40dB.
+                        // Instead of slamming into Android's +15dB hard clamp wall (which squashes dynamics & muddies sound),
+                        // we apply an elegant logarithmic soft-knee curve that maps high gains smoothly into the +6dB to +11.5dB audiophile sweet spot.
+                        val stagedGainDb = if (rawCompositeGainDb > 10.0f) {
+                            10.0f + (kotlin.math.ln(1f + (rawCompositeGainDb - 10.0f) * 0.4f) * 2.5f)
+                        } else if (rawCompositeGainDb < -10.0f) {
+                            -10.0f - (kotlin.math.ln(1f + (-rawCompositeGainDb - 10.0f) * 0.4f) * 2.5f)
+                        } else {
+                            rawCompositeGainDb
+                        }
+
+                        val levelMB = (stagedGainDb * 100f).coerceIn(-1400f, 1400f).toInt().toShort()
                         eq.setBandLevel(i.toShort(), levelMB)
                     }
                     if (!eq.enabled) eq.enabled = true

@@ -48,8 +48,8 @@ fun MainScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("ViPER4Android FX", color = AccentColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("v2.7.0 Studio Suite", color = MutedTextColor, fontSize = 11.sp)
+                        Text("PulseFX Studio", color = AccentColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("v3.0.0 • Non-Root DSP Audio Suite", color = MutedTextColor, fontSize = 11.sp)
                     }
                 },
                 actions = {

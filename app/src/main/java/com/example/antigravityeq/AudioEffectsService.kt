@@ -174,8 +174,7 @@ class AudioEffectsService : Service() {
             // 1. Equalizer & Frequency Shaping
             val eq = effects.equalizer
             if (eq != null) {
-                eq.enabled = false
-                if (isEnabled) {
+                if (isEnabled && currentSettings.isEqEnabled) {
                     val numBands = eq.numberOfBands.toInt()
                     for (i in 0 until numBands) {
                         if (i < currentSettings.bandLevels.size) {
@@ -183,36 +182,39 @@ class AudioEffectsService : Service() {
                             eq.setBandLevel(i.toShort(), levelMB)
                         }
                     }
-                    eq.enabled = true
+                    if (!eq.enabled) eq.enabled = true
+                } else {
+                    if (eq.enabled) eq.enabled = false
                 }
             }
 
             // 2. ViPER Bass (Resonant sub-bass & natural boost)
             val bb = effects.bassBoost
             if (bb != null) {
-                bb.enabled = false
-                if (isEnabled && currentSettings.bassBoost > 0) {
+                if (isEnabled && currentSettings.isBassEnabled && currentSettings.bassBoost > 0) {
                     val strength = currentSettings.bassBoost.coerceIn(0, 1000).toShort()
                     bb.setStrength(strength)
-                    bb.enabled = true
+                    if (!bb.enabled) bb.enabled = true
+                } else {
+                    if (bb.enabled) bb.enabled = false
                 }
             }
 
             // 3. 3D Surround Field / Virtualizer
             val virt = effects.virtualizer
             if (virt != null) {
-                virt.enabled = false
                 if (isEnabled && currentSettings.isFieldSurroundEnabled && currentSettings.fieldSurroundStrength > 0) {
                     val strength = currentSettings.fieldSurroundStrength.coerceIn(0, 1000).toShort()
                     virt.setStrength(strength)
-                    virt.enabled = true
+                    if (!virt.enabled) virt.enabled = true
+                } else {
+                    if (virt.enabled) virt.enabled = false
                 }
             }
 
             // 4. Reverberation Matrix
             val rev = effects.presetReverb
             if (rev != null) {
-                rev.enabled = false
                 if (isEnabled && currentSettings.isReverbEnabled) {
                     val preset = when {
                         currentSettings.reverbRoomSize < 100 -> PresetReverb.PRESET_SMALLROOM
@@ -221,19 +223,16 @@ class AudioEffectsService : Service() {
                         else -> PresetReverb.PRESET_LARGEHALL
                     }
                     rev.preset = preset
-                    rev.enabled = true
+                    if (!rev.enabled) rev.enabled = true
+                } else {
+                    if (rev.enabled) rev.enabled = false
                 }
             }
 
-            // 5. ViPER Clarity & Loudness Master
+            // 5. Loudness Enhancer (Disabled to prevent conflict with master volume)
             val le = effects.loudnessEnhancer
-            if (le != null) {
+            if (le != null && le.enabled) {
                 le.enabled = false
-                if (isEnabled && (currentSettings.clarity > 0 || currentSettings.outputGain > 0)) {
-                    val gainMb = ((currentSettings.clarity / 2) + (maxOf(0, currentSettings.outputGain) * 50)).coerceIn(0, 1000)
-                    le.setTargetGain(gainMb)
-                    le.enabled = true
-                }
             }
 
             Log.d(TAG, "Applied ViPER DSP params to session ${effects.sessionId}: enabled=$isEnabled")

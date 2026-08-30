@@ -2,7 +2,7 @@
   <img src="docs/images/banner.png" alt="PulseFX Studio Banner" width="100%">
 </p>
 
-# 🎛️ PulseFX Studio (v1.3.2)
+# 🎛️ PulseFX Studio (v1.3.3)
 
 <p align="center">
   <img src="docs/images/logo.png" alt="PulseFX Studio Logo" width="140" height="140">
@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Densuper/PulseFX-Studio-Suite/releases/tag/v1.3.2"><img src="https://img.shields.io/badge/Release-v1.3.2-00E5FF.svg" alt="Release"></a>
+  <a href="https://github.com/Densuper/PulseFX-Studio-Suite/releases/tag/v1.3.3"><img src="https://img.shields.io/badge/Release-v1.3.3-00E5FF.svg" alt="Release"></a>
   <a href="https://developer.android.com"><img src="https://img.shields.io/badge/Android-8.0%20to%2015%2B-69F0AE.svg" alt="Android"></a>
   <img src="https://img.shields.io/badge/Target-Google%20Pixel%20%26%20Universal-FFB74D.svg" alt="Target">
   <img src="https://img.shields.io/badge/Design-Google%20Material%203-80D8FF.svg" alt="Material 3">
@@ -39,12 +39,8 @@ Featuring an interactive **Catmull-Rom Paragraphic Spline Curve Equalizer**, dyn
 ### ⚡ 2. Symmetrical Straight Glowing Line Traces
 - **Dynamic Activation Glow**: Straight vertical energy connector lines positioned on both the left and right sides of each module that light up in theme colors whenever an effect is enabled.
 
-### 🎛️ 3. Interactive Paragraphic Spline Curve Equalizer & Live FFT Motion
-- **Dual-Mode Visualizer**: When EQ is OFF, the 10 frequency nodes & spline curve glide organically with slow, natural movement tracking real audio output. When EQ is ON, it renders the user's touch-interactive target curve.
-- **20 Hz to 20 kHz Logarithmic Scale**: Freeform touch drawing and individual node dragging with smooth Catmull-Rom cubic spline interpolation.
-- **Externalized Axis Architecture**: dB scales and frequency markers are rendered cleanly outside the curve box for unobstructed visualization.
-- **One-Touch Reset**: Instantly flatten the response curve to 0 dB.
-- **21 Classic Audiophile Presets**: Acoustic, Bass Booster, Classical, Dance, Deep, Electronic, Hip-Hop, Jazz, Rock, Vocal Booster, etc.
+### 🎛️ 3. True Non-Interfering Zero-Flattening Audio Passthrough
+- **Active-Only Enhancement**: When Master Power is ON, any un-enabled module stays strictly at 0 dB without altering or flattening the incoming stream. When you toggle an individual module (such as ViPER Bass or AGC), only that specific frequency sector or gain curve is enhanced without altering other bands or modules.
 
 ### 🔊 4. Real-Time Acoustic Mastering Modules (18-Module Suite)
 1. **Master Limiter**: Lookahead soft-knee true-peak ceiling (0 dBFS protection) with independent output gain and pan control.
@@ -57,8 +53,8 @@ Featuring an interactive **Catmull-Rom Paragraphic Spline Curve Equalizer**, dyn
 8. **Field Surround**: Mid-Side vocal and soundstage spatializer with 3D Virtualizer integration.
 9. **Differential Surround**: Haas psychoacoustic inter-aural time delay ($1\text{ ms} \to 20\text{ ms}$) via a 2400-sample circular ring buffer.
 10. **Headphone Surround+ (VHE)**: Binaural HRTF crossfeed eliminating in-head listening fatigue.
-11. **Schroeder-Moorer Reverberation**: 4 parallel feedback comb filters with high-frequency damping + all-pass diffusion matrix.
-12. **Dynamic System**: Device-specific impedance modeling and dynamic low-frequency sub-bass punch.
+11. **Schroeder-Moorer Reverberation**: EnvironmentalReverb & PresetReverb matrix with decay scaling ($500\text{ms} \to 7000\text{ms}$) and acoustic diffusion.
+12. **Dynamic System**: Device-specific impedance modeling (High-End In-Ear, Apple EarPods, Studio Monitors, Open-Back) and dynamic low-frequency sub-bass punch.
 13. **Analog Tube Simulator (6N1P / 12AX7)**: Non-linear hyperbolic tangent ($\tanh$) dual-triode saturation for warm 2nd-order harmonics.
 14. **ViPER Bass**: Dynamic sub-harmonic frequency synthesizers with **Natural Bass**, **Pure Bass+ (Quadratic Rectification)**, and **Subwoofer** modes (up to +18dB).
 15. **ViPER Clarity**: High-shelf harmonic overtones with **Natural**, **Ozone+ (Asymmetric Exciter)**, and **XHiFi Pro** harmonic expansion (up to +14dB).
@@ -102,17 +98,17 @@ Featuring an interactive **Catmull-Rom Paragraphic Spline Curve Equalizer**, dyn
 ## 📥 Installation
 
 ### 🟢 Method 1: Non-Root Shizuku / Shevery Setup *(Recommended for 100% System-Wide Sound)*
-1. Download **`PulseFX-Studio-v1.3.2.apk`** and **`PulseFX-Studio-v1.3.2-Shevery.zip`** (1.99 KB) from [Releases](https://github.com/Densuper/PulseFX-Studio-Suite/releases).
-2. Install **`PulseFX-Studio-v1.3.2.apk`** on your phone.
-3. Open **Shevery** (with Shizuku active) $\to$ Tap **Add Module (+)** $\to$ Select **`PulseFX-Studio-v1.3.2-Shevery.zip`** $\to$ Tap **Install**.
+1. Download **`PulseFX-Studio-v1.3.3.apk`** and **`PulseFX-Studio-v1.3.3-Shevery.zip`** (1.99 KB) from [Releases](https://github.com/Densuper/PulseFX-Studio-Suite/releases).
+2. Install **`PulseFX-Studio-v1.3.3.apk`** on your phone.
+3. Open **Shevery** (with Shizuku active) $\to$ Tap **Add Module (+)** $\to$ Select **`PulseFX-Studio-v1.3.3-Shevery.zip`** $\to$ Tap **Install**.
 4. Open **PulseFX Studio** and toggle **Master Power**. All audio across YouTube, games, browsers, and media players is now mastered in real time!
 
 ### 🔵 Method 2: Standalone Plug & Play Mode *(Zero Setup / APK Only)*
-1. Download and install **`PulseFX-Studio-v1.3.2.apk`**.
+1. Download and install **`PulseFX-Studio-v1.3.3.apk`**.
 2. In **Spotify** or **Apple Music**, go to Settings $\to$ Equalizer $\to$ Select **PulseFX Studio**.
 
 ### 🛡️ Method 3: Magisk / KernelSU / APatch *(For Rooted Audiophiles)*
-1. Flash **`PulseFX-Studio-v1.3.2-Shevery.zip`** in Magisk / KernelSU.
+1. Flash **`PulseFX-Studio-v1.3.3-Shevery.zip`** in Magisk / KernelSU.
 2. Reboot your device and open **PulseFX Studio**.
 
 ---

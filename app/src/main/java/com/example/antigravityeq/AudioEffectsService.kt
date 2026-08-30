@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.media.audiofx.AudioEffect
 import android.media.audiofx.BassBoost
+import android.media.audiofx.EnvironmentalReverb
 import android.media.audiofx.Equalizer
 import android.media.audiofx.LoudnessEnhancer
 import android.media.audiofx.PresetReverb
@@ -62,6 +63,7 @@ class AudioEffectsService : Service() {
         var bassBoost: BassBoost? = null,
         var virtualizer: Virtualizer? = null,
         var presetReverb: PresetReverb? = null,
+        var environmentalReverb: EnvironmentalReverb? = null,
         var loudnessEnhancer: LoudnessEnhancer? = null,
         var visualizer: android.media.audiofx.Visualizer? = null
     ) {
@@ -178,7 +180,17 @@ class AudioEffectsService : Service() {
             effects.equalizer = Equalizer(1000, sessionId)
             effects.bassBoost = BassBoost(1000, sessionId)
             effects.virtualizer = Virtualizer(1000, sessionId)
-            effects.presetReverb = PresetReverb(1000, sessionId)
+            
+            try {
+                effects.environmentalReverb = EnvironmentalReverb(1000, sessionId)
+            } catch (e: Exception) {
+                Log.w(TAG, "EnvironmentalReverb not supported directly, falling back to PresetReverb: $e")
+                try {
+                    effects.presetReverb = PresetReverb(1000, sessionId)
+                } catch (pe: Exception) {
+                    Log.w(TAG, "PresetReverb unavailable for session $sessionId")
+                }
+            }
             
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                 try {
@@ -421,8 +433,8 @@ class AudioEffectsService : Service() {
                         }
 
                         // Decoupled Harmonic Summation with Headroom Protection:
-                        // Bass is routed in isolated low-frequency channels (0..2), Clarity in high (5..9), and EQ across all.
-                        // They NEVER overwrite or suppress each other's frequency headroom.
+                        // If a module is NOT enabled, its contribution is strictly 0.0dB.
+                        // When EQ is disabled, userEqGainDb is 0.0dB, so enabling Bass Boost only boosts bands 0..2 without flattening or touching the rest.
                         val totalCompositeGainDb = userEqGainDb + bassStageDb + clarityStageDb +
                             convolverStageDb + tubeStageDb + vseStageDb + dynamicStageDb +
                             reverbStageDb + ddcStageDb + analogXStageDb + protectionStageDb + speakerOptStageDb
@@ -493,10 +505,27 @@ class AudioEffectsService : Service() {
                 }
             }
 
-            // 4. Reverberation Matrix
+            // 4. Reverberation Matrix (EnvironmentalReverb + PresetReverb fallback)
+            val envRev = effects.environmentalReverb
             val rev = effects.presetReverb
-            if (rev != null) {
-                if (isEnabled && currentSettings.isReverbEnabled) {
+
+            if (isEnabled && currentSettings.isReverbEnabled) {
+                if (envRev != null) {
+                    try {
+                        val wetMilliBels = ((currentSettings.reverbWetRatio / 100f) * 2000f - 1000f).toInt().toShort()
+                        val decayMs = (currentSettings.reverbRoomSize * 15).coerceIn(500, 7000)
+                        val roomLevelMb = ((currentSettings.reverbSoundField / 100f) * 2000f - 1000f).toInt().toShort()
+
+                        envRev.roomLevel = roomLevelMb
+                        envRev.decayTime = decayMs
+                        envRev.reverbLevel = wetMilliBels
+                        if (!envRev.enabled) envRev.enabled = true
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Error setting EnvironmentalReverb params: $e")
+                    }
+                }
+                
+                if (rev != null) {
                     val preset = when {
                         currentSettings.reverbRoomSize < 100 -> PresetReverb.PRESET_SMALLROOM
                         currentSettings.reverbRoomSize < 200 -> PresetReverb.PRESET_MEDIUMROOM
@@ -505,9 +534,10 @@ class AudioEffectsService : Service() {
                     }
                     rev.preset = preset
                     if (!rev.enabled) rev.enabled = true
-                } else {
-                    if (rev.enabled) rev.enabled = false
                 }
+            } else {
+                if (envRev?.enabled == true) envRev.enabled = false
+                if (rev?.enabled == true) rev.enabled = false
             }
 
             // 5. Loudness Enhancer (Playback AGC Gain + Master Output Volume Boost + Speaker Opt)

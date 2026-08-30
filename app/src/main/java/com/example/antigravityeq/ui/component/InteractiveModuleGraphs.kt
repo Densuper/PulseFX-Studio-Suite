@@ -3,6 +3,8 @@ package com.example.antigravityeq.ui.component
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,24 +59,39 @@ fun InteractiveBassCurveGraph(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(130.dp)
+                .height(155.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(surfaceVariantColor)
                 .border(1.dp, outlineColor.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
                 .pointerInput(frequencyHz, gainBoost) {
-                    detectDragGestures { change, _ ->
-                        change.consume()
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        down.consume()
                         val width = size.width.toFloat()
                         val height = size.height.toFloat()
                         
-                        val normX = (change.position.x / width).coerceIn(0f, 1f)
+                        val normX = (down.position.x / width).coerceIn(0f, 1f)
                         val newFreq = (30 + normX * (100 - 30)).roundToInt()
-                        
-                        val normY = (1f - (change.position.y / height)).coerceIn(0f, 1f)
+                        val normY = (1f - (down.position.y / height)).coerceIn(0f, 1f)
                         val newGain = (normY * 1000).roundToInt()
                         
                         onFrequencyChange(newFreq)
                         onGainChange(newGain)
+                        
+                        do {
+                            val event = awaitPointerEvent()
+                            event.changes.forEach { change ->
+                                if (change.pressed) {
+                                    change.consume()
+                                    val moveNormX = (change.position.x / width).coerceIn(0f, 1f)
+                                    val moveFreq = (30 + moveNormX * (100 - 30)).roundToInt()
+                                    val moveNormY = (1f - (change.position.y / height)).coerceIn(0f, 1f)
+                                    val moveGain = (moveNormY * 1000).roundToInt()
+                                    onFrequencyChange(moveFreq)
+                                    onGainChange(moveGain)
+                                }
+                            }
+                        } while (event.changes.any { it.pressed })
                     }
                 }
         ) {
@@ -228,17 +245,30 @@ fun InteractiveClarityCurveGraph(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(130.dp)
+                .height(155.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(surfaceVariantColor)
                 .border(1.dp, outlineColor.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
                 .pointerInput(clarityGain) {
-                    detectDragGestures { change, _ ->
-                        change.consume()
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        down.consume()
                         val height = size.height.toFloat()
-                        val normY = (1f - (change.position.y / height)).coerceIn(0f, 1f)
+                        val normY = (1f - (down.position.y / height)).coerceIn(0f, 1f)
                         val newGain = (normY * 1000).roundToInt()
                         onGainChange(newGain)
+                        
+                        do {
+                            val event = awaitPointerEvent()
+                            event.changes.forEach { change ->
+                                if (change.pressed) {
+                                    change.consume()
+                                    val moveNormY = (1f - (change.position.y / height)).coerceIn(0f, 1f)
+                                    val moveGain = (moveNormY * 1000).roundToInt()
+                                    onGainChange(moveGain)
+                                }
+                            }
+                        } while (event.changes.any { it.pressed })
                     }
                 }
         ) {
@@ -380,7 +410,7 @@ fun InteractiveCompressorGraph(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(130.dp),
+                .height(155.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // External Left dB Scale (0dB down to -40dB)
@@ -409,22 +439,37 @@ fun InteractiveCompressorGraph(
                     .clip(RoundedCornerShape(12.dp))
                     .background(surfaceVariantColor)
                     .border(1.dp, outlineColor.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                    .pointerInput(thresholdDb, ratio) {
-                        detectDragGestures { change, _ ->
-                            change.consume()
-                            val width = size.width.toFloat()
-                            val height = size.height.toFloat()
-                            
-                            val normX = (change.position.x / width).coerceIn(0f, 1f)
-                            val newThresh = (-40 + normX * 40).roundToInt()
-                            
-                            val normY = (1f - (change.position.y / height)).coerceIn(0f, 1f)
-                            val newRatio = max(1, (1 + normY * 19).roundToInt())
-                            
-                            onThresholdChange(newThresh)
-                            onRatioChange(newRatio)
-                        }
+                .pointerInput(thresholdDb, ratio) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        down.consume()
+                        val width = size.width.toFloat()
+                        val height = size.height.toFloat()
+                        
+                        val normX = (down.position.x / width).coerceIn(0f, 1f)
+                        val newThresh = (-40 + normX * 40).roundToInt()
+                        val normY = (1f - (down.position.y / height)).coerceIn(0f, 1f)
+                        val newRatio = max(1, (1 + normY * 19).roundToInt())
+                        
+                        onThresholdChange(newThresh)
+                        onRatioChange(newRatio)
+                        
+                        do {
+                            val event = awaitPointerEvent()
+                            event.changes.forEach { change ->
+                                if (change.pressed) {
+                                    change.consume()
+                                    val moveNormX = (change.position.x / width).coerceIn(0f, 1f)
+                                    val moveThresh = (-40 + moveNormX * 40).roundToInt()
+                                    val moveNormY = (1f - (change.position.y / height)).coerceIn(0f, 1f)
+                                    val moveRatio = max(1, (1 + moveNormY * 19).roundToInt())
+                                    onThresholdChange(moveThresh)
+                                    onRatioChange(moveRatio)
+                                }
+                            }
+                        } while (event.changes.any { it.pressed })
                     }
+                }
             ) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val w = size.width

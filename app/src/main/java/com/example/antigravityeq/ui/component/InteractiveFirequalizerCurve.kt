@@ -3,6 +3,8 @@ package com.example.antigravityeq.ui.component
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -71,7 +73,7 @@ fun InteractiveFirequalizerCurve(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(180.dp),
+                .height(220.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // External Left dB Scale (Outside Graph Box)
@@ -102,11 +104,13 @@ fun InteractiveFirequalizerCurve(
                     .border(1.dp, outlineColor.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
                     .pointerInput(displayLevels, isEqEnabled) {
                         if (isEqEnabled) {
-                            detectTapGestures { offset ->
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                down.consume()
                                 val width = size.width.toFloat()
                                 val height = size.height.toFloat()
-                                val tappedFreq = xToFreq(offset.x, width)
                                 
+                                val tappedFreq = xToFreq(down.position.x, width)
                                 var closestIdx = 0
                                 var minDistance = Double.MAX_VALUE
                                 for (i in frequencies.indices) {
@@ -116,47 +120,33 @@ fun InteractiveFirequalizerCurve(
                                         closestIdx = i
                                     }
                                 }
-                                
-                                val newDb = yToDb(offset.y, height).roundToInt().coerceIn(MIN_DB.toInt(), MAX_DB.toInt())
-                                val updated = bandLevels.toMutableList()
-                                updated[closestIdx] = newDb
-                                onBandLevelsChange(updated)
                                 selectedNodeIndex = closestIdx
-                            }
-                        }
-                    }
-                    .pointerInput(displayLevels, isEqEnabled) {
-                        if (isEqEnabled) {
-                            detectDragGestures(
-                                onDragStart = { offset ->
-                                    val width = size.width.toFloat()
-                                    val tappedFreq = xToFreq(offset.x, width)
-                                    var closestIdx = 0
-                                    var minDistance = Double.MAX_VALUE
-                                    for (i in frequencies.indices) {
-                                        val dist = abs(log10(frequencies[i].toDouble()) - log10(tappedFreq))
-                                        if (dist < minDistance) {
-                                            minDistance = dist
-                                            closestIdx = i
-                                        }
-                                    }
-                                    selectedNodeIndex = closestIdx
-                                },
-                                onDragEnd = { selectedNodeIndex = null },
-                                onDragCancel = { selectedNodeIndex = null },
-                                onDrag = { change, _ ->
-                                    change.consume()
-                                    val idx = selectedNodeIndex ?: return@detectDragGestures
-                                    val height = size.height.toFloat()
-                                    val gainDb = yToDb(change.position.y, height).roundToInt()
-                                    
-                                    val updated = bandLevels.toMutableList()
-                                    if (idx in updated.indices) {
-                                        updated[idx] = gainDb.coerceIn(MIN_DB.toInt(), MAX_DB.toInt())
-                                    }
+                                
+                                val newDb = yToDb(down.position.y, height).roundToInt().coerceIn(MIN_DB.toInt(), MAX_DB.toInt())
+                                val updated = bandLevels.toMutableList()
+                                if (closestIdx in updated.indices) {
+                                    updated[closestIdx] = newDb
                                     onBandLevelsChange(updated)
                                 }
-                            )
+                                
+                                do {
+                                    val event = awaitPointerEvent()
+                                    event.changes.forEach { change ->
+                                        if (change.pressed) {
+                                            change.consume()
+                                            val idx = selectedNodeIndex ?: closestIdx
+                                            val gainDb = yToDb(change.position.y, height).roundToInt()
+                                            val currentUpdated = bandLevels.toMutableList()
+                                            if (idx in currentUpdated.indices) {
+                                                currentUpdated[idx] = gainDb.coerceIn(MIN_DB.toInt(), MAX_DB.toInt())
+                                                onBandLevelsChange(currentUpdated)
+                                            }
+                                        }
+                                    }
+                                } while (event.changes.any { it.pressed })
+                                
+                                selectedNodeIndex = null
+                            }
                         }
                     }
             ) {

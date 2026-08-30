@@ -133,16 +133,16 @@ fun InteractiveFirequalizerCurve(
                         strokeWidth = if (isZero) 1.5f else 1f
                     )
                     
-                    val label = if (db > 0) "+${db.toInt()}dB" else "${db.toInt()}dB"
+                    val label = if (db > 0) "+${db.toInt()}dB" else if (db < 0) "${db.toInt()}dB" else "0 dB"
                     drawText(
                         textMeasurer = textMeasurer,
                         text = label,
                         style = TextStyle(
                             color = if (isZero) primaryColor else onSurfaceVariantColor,
-                            fontSize = 9.sp,
+                            fontSize = 8.5.sp,
                             fontWeight = if (isZero) FontWeight.Bold else FontWeight.Normal
                         ),
-                        topLeft = Offset(6f, (y - 12f).coerceIn(4f, canvasHeight - 32f))
+                        topLeft = Offset(8f, (y - 12f).coerceIn(4f, canvasHeight - 32f))
                     )
                 }
                 
@@ -246,18 +246,20 @@ fun InteractiveFirequalizerCurve(
                         center = Offset(x, y)
                     )
                     
-                    val valueLabel = if (gain > 0) "+${gain.toInt()}" else "${gain.toInt()}"
-                    val valYOffset = if (y < 35f) y + 10f else y - 20f
-                    drawText(
-                        textMeasurer = textMeasurer,
-                        text = valueLabel,
-                        style = TextStyle(
-                            color = if (isSelected) primaryColor else onSurfaceColor,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        topLeft = Offset(x - 10f, valYOffset)
-                    )
+                    if (gain != 0f || isSelected) {
+                        val valueLabel = if (gain > 0) "+${gain.toInt()}dB" else "${gain.toInt()}dB"
+                        val valYOffset = if (y < 45f) y + 12f else y - 20f
+                        drawText(
+                            textMeasurer = textMeasurer,
+                            text = valueLabel,
+                            style = TextStyle(
+                                color = if (isSelected) primaryColor else onSurfaceColor,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            topLeft = Offset(x - 12f, valYOffset)
+                        )
+                    }
                     
                     drawText(
                         textMeasurer = textMeasurer,

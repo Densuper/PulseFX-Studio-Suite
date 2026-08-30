@@ -197,7 +197,7 @@ fun InteractiveClarityCurveGraph(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(150.dp)
+            .height(175.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .pointerInput(clarityGain) {
@@ -221,32 +221,32 @@ fun InteractiveClarityCurveGraph(
                 drawLine(
                     color = outlineColor.copy(alpha = 0.2f),
                     start = Offset(x, 0f),
-                    end = Offset(x, h - 28f),
+                    end = Offset(x, h - 32f),
                     strokeWidth = 1f
                 )
                 drawText(
                     textMeasurer = textMeasurer,
                     text = label,
-                    style = TextStyle(color = onSurfaceVariantColor, fontSize = 8.sp),
-                    topLeft = Offset((x - 12f).coerceIn(4f, w - 32f), h - 20f)
+                    style = TextStyle(color = onSurfaceVariantColor, fontSize = 8.5.sp),
+                    topLeft = Offset((x - 12f).coerceIn(4f, w - 34f), h - 24f)
                 )
             }
             
             // High-shelf harmonic curve
             val shelfGainNorm = (clarityGain / 1000f).coerceIn(0.05f, 1f)
-            val shelfHeight = shelfGainNorm * (h - 50f)
-            val curveY = h - 25f - shelfHeight
+            val shelfHeight = shelfGainNorm * (h - 65f)
+            val curveY = h - 35f - shelfHeight
             
             val curvePath = Path()
             val fillPath = Path()
             
-            fillPath.moveTo(0f, h - 20f)
+            fillPath.moveTo(0f, h - 32f)
             val steps = 50
             for (i in 0..steps) {
                 val x = (i.toFloat() / steps) * w
                 val normX = (x / w)
                 val shelfFactor = 1f / (1f + exp(- (normX - 0.45f) * 10f))
-                val y = h - 25f - (shelfFactor * shelfHeight)
+                val y = h - 35f - (shelfFactor * shelfHeight)
                 
                 if (i == 0) {
                     curvePath.moveTo(x, y)
@@ -257,7 +257,7 @@ fun InteractiveClarityCurveGraph(
                 }
             }
             
-            fillPath.lineTo(w, h - 20f)
+            fillPath.lineTo(w, h - 32f)
             fillPath.close()
             
             drawPath(
@@ -269,7 +269,7 @@ fun InteractiveClarityCurveGraph(
                         Color.Transparent
                     ),
                     startY = 0f,
-                    endY = h - 20f
+                    endY = h - 32f
                 )
             )
             
@@ -282,24 +282,25 @@ fun InteractiveClarityCurveGraph(
             )
             
             val handleX = (w - 44f) * 0.85f + 22f
+            val handleY = curveY
             drawCircle(
                 color = primaryColor.copy(alpha = 0.35f),
                 radius = 16f,
-                center = Offset(handleX, curveY)
+                center = Offset(handleX, handleY)
             )
             drawCircle(
                 color = primaryColor,
                 radius = 7f,
-                center = Offset(handleX, curveY)
+                center = Offset(handleX, handleY)
             )
             drawCircle(
                 color = Color.White,
                 radius = 3.5f,
-                center = Offset(handleX, curveY)
+                center = Offset(handleX, handleY)
             )
             
             val readout = "Clarity: +${clarityGain / 70}dB"
-            val readY = if (curveY < 30f) curveY + 12f else curveY - 22f
+            val readY = if (handleY < 35f) handleY + 14f else handleY - 24f
             drawText(
                 textMeasurer = textMeasurer,
                 text = readout,

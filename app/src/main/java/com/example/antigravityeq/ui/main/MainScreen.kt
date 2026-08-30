@@ -26,12 +26,6 @@ import com.example.antigravityeq.ui.component.InteractiveFirequalizerCurve
 import com.example.antigravityeq.ui.component.ValuePicker
 import com.example.antigravityeq.ui.component.ValueSlider
 
-val BgColor = Color(0xFF12131A)
-val CardColor = Color(0xFF1A1C24)
-val AccentColor = Color(0xFF00E5FF)
-val TextColor = Color(0xFFEDF1F8)
-val MutedTextColor = Color(0xFF9AA5B8)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
@@ -82,7 +76,6 @@ fun MainScreen(
                     ValueSlider(
                         title = "Output gain",
                         summary = "${settings.outputGain} dB",
-                        summaryUnit = "dB",
                         value = settings.outputGain,
                         onValueChange = { v -> viewModel.updateSettings { s -> s.copy(outputGain = v) } },
                         valueRange = -20..6
@@ -97,7 +90,6 @@ fun MainScreen(
                     ValueSlider(
                         title = "Threshold limit",
                         summary = "${settings.limiterThreshold} dB",
-                        summaryUnit = "dB",
                         value = settings.limiterThreshold,
                         onValueChange = { v -> viewModel.updateSettings { s -> s.copy(limiterThreshold = v) } },
                         valueRange = -3..0
@@ -441,7 +433,7 @@ fun MainScreen(
             ) {
                 Text(
                     text = "Cure+ crossfeed reduces ear fatigue during extended listening sessions.",
-                    color = MutedTextColor,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp
                 )
             }
@@ -470,7 +462,7 @@ fun MainScreen(
             ) {
                 Text(
                     text = "Acoustic correction profile optimized for device external speakers.",
-                    color = MutedTextColor,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp
                 )
             }

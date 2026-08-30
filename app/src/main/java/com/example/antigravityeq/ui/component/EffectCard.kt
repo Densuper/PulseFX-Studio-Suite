@@ -46,10 +46,14 @@ fun EffectCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (enabled == true) 
-                MaterialTheme.colorScheme.surfaceVariant 
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = if (enabled == true) 
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.35f) 
             else 
-                MaterialTheme.colorScheme.surface
+                MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
         )
     ) {
         Column(

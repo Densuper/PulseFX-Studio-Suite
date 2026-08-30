@@ -84,13 +84,13 @@ fun ValueSlider(
         ) {
             Text(
                 text = title,
-                color = Color(0xFFEDF1F8),
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = (summary ?: String.format("%.1f", value)) + summaryUnit,
-                color = Color(0xFF00E5FF),
+                color = MaterialTheme.colorScheme.primary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -103,12 +103,7 @@ fun ValueSlider(
             steps = steps,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(38.dp),
-            colors = SliderDefaults.colors(
-                thumbColor = Color(0xFF00E5FF),
-                activeTrackColor = Color(0xFF00E5FF),
-                inactiveTrackColor = Color(0xFF1E2433)
-            )
+                .height(38.dp)
         )
     }
 }

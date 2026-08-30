@@ -580,11 +580,18 @@ class AudioEffectsService : Service() {
                             if (i >= 8) analogXStageDb += (axBoost * 0.6f)
                         }
 
-                        // 11. Auditory Protection & Speaker Optimization Stages
+                        // 11. Auditory System Protection (ViPER Cure+ Ear Fatigue & Hearing Protection Stage)
                         var protectionStageDb = 0f
                         if (currentSettings.isAuditoryProtectionEnabled) {
-                            if (i in 6..8) protectionStageDb -= 2.0f
-                            if (i in 2..4) protectionStageDb += 1.0f
+                            // ViPER Cure+ Acoustic Filter: Tames piercing sibilance and ear-fatigue resonance while keeping vocal warmth
+                            when (i) {
+                                1, 2 -> protectionStageDb += 2.5f  // 62Hz-125Hz Soothing low-end foundation
+                                3, 4 -> protectionStageDb += 3.5f  // 250Hz-500Hz Warm vocal body for fatigue-free listening
+                                6 -> protectionStageDb -= 4.0f     // 2 kHz Pinna fatigue softening
+                                7 -> protectionStageDb -= 6.5f     // 4 kHz Severe auditory fatigue notch (tames piercing ear canal resonance)
+                                8 -> protectionStageDb -= 5.0f     // 8 kHz Sibilance and harsh cymbal reduction
+                                9 -> protectionStageDb -= 2.0f     // 16 kHz High air roll-off
+                            }
                         }
                         var speakerOptStageDb = 0f
                         if (currentSettings.isSpeakerOptEnabled) {

@@ -2,7 +2,7 @@
   <img src="docs/images/banner.png" alt="PulseFX Studio Banner" width="100%">
 </p>
 
-# 🎛️ PulseFX Studio (v1.3.3)
+# 🎛️ PulseFX Studio (v1.3.6)
 
 <p align="center">
   <img src="docs/images/logo.png" alt="PulseFX Studio Logo" width="140" height="140">
@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Densuper/PulseFX-Studio-Suite/releases/tag/v1.3.3"><img src="https://img.shields.io/badge/Release-v1.3.3-00E5FF.svg" alt="Release"></a>
+  <a href="https://github.com/Densuper/PulseFX-Studio-Suite/releases/tag/v1.3.6"><img src="https://img.shields.io/badge/Release-v1.3.6-00E5FF.svg" alt="Release"></a>
   <a href="https://developer.android.com"><img src="https://img.shields.io/badge/Android-8.0%20to%2015%2B-69F0AE.svg" alt="Android"></a>
   <img src="https://img.shields.io/badge/Target-Google%20Pixel%20%26%20Universal-FFB74D.svg" alt="Target">
   <img src="https://img.shields.io/badge/Design-Google%20Material%203-80D8FF.svg" alt="Material 3">
@@ -43,7 +43,7 @@ Featuring an interactive **Catmull-Rom Paragraphic Spline Curve Equalizer**, dyn
 - **Active-Only Enhancement**: When Master Power is ON, any un-enabled module stays strictly at 0 dB without altering or flattening the incoming stream. When you toggle an individual module (such as ViPER Bass or AGC), only that specific frequency sector or gain curve is enhanced without altering other bands or modules.
 
 ### 🔊 4. Real-Time Acoustic Mastering Modules (18-Module Suite)
-1. **Master Limiter**: Lookahead soft-knee true-peak ceiling (0 dBFS protection) with independent output gain and pan control.
+1. **Master Limiter**: Lookahead soft-knee true-peak ceiling (0 dBFS protection) with independent output gain (-20 dB to +10 dB) and pan control.
 2. **Playback AGC**: Fast-attack ballistic automatic gain leveling with configurable multipliers up to 18x.
 3. **FET Compressor**: Dynamic transfer curve visualizer with adjustable threshold (-40 to 0 dB), ratio (1:1 to 20:1), and makeup gain.
 4. **ViPER-DDC (Digital Device Correction)**: Harman and acoustic correction curves for Apple AirPods Pro, Sony WH-1000XM4, Sennheiser HD650, Audio-Technica M50x, Beyerdynamic DT990, Bose QC45, Galaxy Buds2 Pro, etc.
@@ -98,17 +98,17 @@ Featuring an interactive **Catmull-Rom Paragraphic Spline Curve Equalizer**, dyn
 ## 📥 Installation
 
 ### 🟢 Method 1: Non-Root Shizuku / Shevery Setup *(Recommended for 100% System-Wide Sound)*
-1. Download **`PulseFX-Studio-v1.3.3.apk`** and **`PulseFX-Studio-v1.3.3-Shevery.zip`** (1.99 KB) from [Releases](https://github.com/Densuper/PulseFX-Studio-Suite/releases).
-2. Install **`PulseFX-Studio-v1.3.3.apk`** on your phone.
-3. Open **Shevery** (with Shizuku active) $\to$ Tap **Add Module (+)** $\to$ Select **`PulseFX-Studio-v1.3.3-Shevery.zip`** $\to$ Tap **Install**.
+1. Download **`PulseFX-Studio-v1.3.6.apk`** and **`PulseFX-Studio-v1.3.6-Shevery.zip`** (1.99 KB) from [Releases](https://github.com/Densuper/PulseFX-Studio-Suite/releases).
+2. Install **`PulseFX-Studio-v1.3.6.apk`** on your phone.
+3. Open **Shevery** (with Shizuku active) $\to$ Tap **Add Module (+)** $\to$ Select **`PulseFX-Studio-v1.3.6-Shevery.zip`** $\to$ Tap **Install**.
 4. Open **PulseFX Studio** and toggle **Master Power**. All audio across YouTube, games, browsers, and media players is now mastered in real time!
 
 ### 🔵 Method 2: Standalone Plug & Play Mode *(Zero Setup / APK Only)*
-1. Download and install **`PulseFX-Studio-v1.3.3.apk`**.
+1. Download and install **`PulseFX-Studio-v1.3.6.apk`**.
 2. In **Spotify** or **Apple Music**, go to Settings $\to$ Equalizer $\to$ Select **PulseFX Studio**.
 
 ### 🛡️ Method 3: Magisk / KernelSU / APatch *(For Rooted Audiophiles)*
-1. Flash **`PulseFX-Studio-v1.3.3-Shevery.zip`** in Magisk / KernelSU.
+1. Flash **`PulseFX-Studio-v1.3.6-Shevery.zip`** in Magisk / KernelSU.
 2. Reboot your device and open **PulseFX Studio**.
 
 ---

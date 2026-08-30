@@ -68,7 +68,7 @@ fun MainScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "v1.3.3 • Sovereign DSP Audio Suite",
+                            text = "v1.3.6 • Sovereign DSP Audio Suite",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -149,7 +149,7 @@ fun MainScreen(
                 title = {
                     Column {
                         Text("PulseFX Studio", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("v1.3.3 • Sovereign DSP Audio Suite", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        Text("v1.3.6 • Sovereign DSP Audio Suite", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                 },
                 actions = {
@@ -316,7 +316,7 @@ fun MainScreen(
                         summary = "${settings.outputGain} dB",
                         value = settings.outputGain,
                         onValueChange = { v -> viewModel.updateSettings { s -> s.copy(outputGain = v) } },
-                        valueRange = -20..6
+                        valueRange = -20..10
                     )
                     ValueSlider(
                         title = "Output pan",

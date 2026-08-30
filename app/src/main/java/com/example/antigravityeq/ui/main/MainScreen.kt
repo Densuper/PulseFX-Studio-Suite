@@ -225,20 +225,70 @@ fun MainScreen(
                 .padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Top Connected Earphones / Sources Card
-            val audioManager = androidx.compose.ui.platform.LocalContext.current.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
-            val isBluetoothOn = audioManager?.isBluetoothA2dpOn == true || audioManager?.isBluetoothScoOn == true
-            val isHeadsetOn = audioManager?.isWiredHeadsetOn == true
-            val connectedDeviceName = when {
-                isBluetoothOn -> "CMF Buds / Bluetooth Audio"
-                isHeadsetOn -> "Wired Headset / USB-C DAC"
-                else -> "Internal Stereo Speakers"
+            // Top Connected Earphones / Sources Card (Real Hardware Name Detection)
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
+            
+            var realDeviceName = "Internal Stereo Speakers"
+            var routeBadge = "SPEAKER"
+            var isBluetoothOn = false
+            var isHeadsetOn = false
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && audioManager != null) {
+                val outputDevices = audioManager.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
+                val activeOutput = outputDevices.firstOrNull { dev ->
+                    dev.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                    dev.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                    dev.type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                    dev.type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                    dev.type == android.media.AudioDeviceInfo.TYPE_USB_HEADSET ||
+                    dev.type == android.media.AudioDeviceInfo.TYPE_USB_DEVICE
+                } ?: outputDevices.firstOrNull { dev ->
+                    dev.type == android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+                }
+
+                if (activeOutput != null) {
+                    val rawName = activeOutput.productName?.toString()?.trim() ?: ""
+                    when (activeOutput.type) {
+                        android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+                        android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> {
+                            isBluetoothOn = true
+                            routeBadge = "BT A2DP"
+                            realDeviceName = if (rawName.isNotEmpty() && !rawName.equals("Bluetooth", ignoreCase = true)) rawName else "Bluetooth Headset"
+                        }
+                        android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET,
+                        android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> {
+                            isHeadsetOn = true
+                            routeBadge = "3.5mm"
+                            realDeviceName = if (rawName.isNotEmpty()) rawName else "Wired Headphones"
+                        }
+                        android.media.AudioDeviceInfo.TYPE_USB_HEADSET,
+                        android.media.AudioDeviceInfo.TYPE_USB_DEVICE -> {
+                            isHeadsetOn = true
+                            routeBadge = "USB-DAC"
+                            realDeviceName = if (rawName.isNotEmpty()) rawName else "USB-C Audio DAC"
+                        }
+                        else -> {
+                            routeBadge = "SPEAKER"
+                            realDeviceName = if (rawName.isNotEmpty()) rawName else "Internal Stereo Speakers"
+                        }
+                    }
+                }
+            } else {
+                isBluetoothOn = audioManager?.isBluetoothA2dpOn == true || audioManager?.isBluetoothScoOn == true
+                isHeadsetOn = audioManager?.isWiredHeadsetOn == true
+                realDeviceName = when {
+                    isBluetoothOn -> "Bluetooth Audio Device"
+                    isHeadsetOn -> "Wired Headset / USB-C DAC"
+                    else -> "Internal Stereo Speakers"
+                }
+                routeBadge = when {
+                    isBluetoothOn -> "BT A2DP"
+                    isHeadsetOn -> "USB/DAC"
+                    else -> "SPEAKER"
+                }
             }
-            val routeBadge = when {
-                isBluetoothOn -> "BT A2DP"
-                isHeadsetOn -> "USB/DAC"
-                else -> "SPEAKER"
-            }
+            val connectedDeviceName = realDeviceName
 
             Card(
                 modifier = Modifier.fillMaxWidth(),

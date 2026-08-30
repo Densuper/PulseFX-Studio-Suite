@@ -214,119 +214,136 @@ class AudioEffectsService : Service() {
                 if (isEnabled && hasAnyHarmonicModule) {
                     val numBands = eq.numberOfBands.toInt()
                     for (i in 0 until numBands) {
-                        var bandGainDb = if (currentSettings.isEqEnabled && i < currentSettings.bandLevels.size) {
+                        // 1. Base User 10-Band EQ Curve (Completely Independent Headroom)
+                        var userEqGainDb = if (currentSettings.isEqEnabled && i < currentSettings.bandLevels.size) {
                             currentSettings.bandLevels[i].toFloat()
                         } else {
                             0f
                         }
 
-                        // Module: ViPER Clarity Treble Shelf (Bands 6..9: 2kHz, 4kHz, 8kHz, 16kHz)
+                        // 2. High-Frequency Clarity & Harmonic Overtones (Isolated High-End Stage, Bands 5..9)
+                        var clarityStageDb = 0f
                         if (currentSettings.isClarityEnabled && i >= 5) {
                             val clarityGain = if (currentSettings.clarity > 0) currentSettings.clarity else 500
                             val clarityBoost = (clarityGain / 1000f) * (when (currentSettings.clarityMode) {
-                                0 -> 5f // Natural Air
-                                1 -> 9f // Ozone+ Excite
-                                else -> 14f // XHiFi Pro
+                                0 -> 4.5f // Natural Air
+                                1 -> 7.5f // Ozone+ Excite
+                                else -> 11.0f // XHiFi Pro
                             }) * ((i - 4) / 5f)
-                            bandGainDb += clarityBoost
+                            clarityStageDb += clarityBoost
                         }
 
-                        // Module: Convolver & Analog Tape/Tube Saturation EQ Curve (Bands 0..9)
+                        // 3. Convolver & Analog Tape/Console Coloration (Isolated Stage)
+                        var convolverStageDb = 0f
                         if (currentSettings.isConvolverEnabled) {
-                            bandGainDb += when (currentSettings.convolverPreset) {
-                                0 -> if (i <= 2) 4.5f else if (i >= 7) 3.0f else 0f // Studer A800 Warm Tape Head
-                                1 -> if (i in 1..4) 5.0f else if (i >= 8) 2.5f else 0f // Telefunken 12AX7 Tube
-                                2 -> if (i <= 3) 7.5f else 0f // Sony MegaBass Punch
-                                3 -> if (i in 4..7) 3.5f else 0f // Lexicon Hall Presence
-                                4 -> if (i in 5..9) 4.0f else 0f // Dolby Atmos Air
-                                5 -> if (i <= 2) 3.5f else if (i in 3..6) 4.0f else 0f // Neve 1073 Transformer Warmth
-                                6 -> if (i in 2..5) 3.0f else 0f // SSL 4000G Bus
+                            convolverStageDb += when (currentSettings.convolverPreset) {
+                                0 -> if (i <= 2) 3.5f else if (i >= 7) 2.5f else 0f // Studer A800 Warm Tape Head
+                                1 -> if (i in 1..4) 4.0f else if (i >= 8) 2.0f else 0f // Telefunken 12AX7 Tube
+                                2 -> if (i <= 3) 5.5f else 0f // Sony MegaBass Punch
+                                3 -> if (i in 4..7) 2.5f else 0f // Lexicon Hall Presence
+                                4 -> if (i in 5..9) 3.0f else 0f // Dolby Atmos Air
+                                5 -> if (i <= 2) 2.5f else if (i in 3..6) 3.0f else 0f // Neve 1073 Transformer Warmth
+                                6 -> if (i in 2..5) 2.0f else 0f // SSL 4000G Bus
                                 else -> 0f
                             }
                         }
 
-                        // Module: Analog Tube Simulator (6N1P / 12AX7 2nd Harmonic Warmth)
+                        // 4. Analog Tube Simulator (Isolated Low-Mid Warmth Stage)
+                        var tubeStageDb = 0f
                         if (currentSettings.isTubeEnabled) {
                             val warmth = if (currentSettings.tubeWarmth > 0) currentSettings.tubeWarmth else 500
-                            val tubeBoost = (warmth / 1000f) * 5.0f
-                            if (i in 1..4) bandGainDb += tubeBoost // Warm even-order low-mid body
+                            val tubeBoost = (warmth / 1000f) * 3.5f
+                            if (i in 1..4) tubeStageDb += tubeBoost
                         }
 
-                        // Module: ViPER Bass Direct Low-End Band Boost (Bands 0..2: 31Hz, 62Hz, 125Hz)
+                        // 5. ViPER Bass Sub-Harmonic Low-End Stage (Bands 0..2)
+                        var bassStageDb = 0f
                         if (currentSettings.isBassEnabled) {
                             val bassGain = if (currentSettings.bassBoost > 0) currentSettings.bassBoost else 600
                             val bassMult = when (currentSettings.viperBassMode) {
-                                0 -> 8f // Natural Bass (+8dB)
-                                1 -> 12f // Pure Bass+ (+12dB)
-                                else -> 16f // Subwoofer (+16dB)
+                                0 -> 6f // Natural Bass (+6dB)
+                                1 -> 9f // Pure Bass+ (+9dB)
+                                else -> 12f // Subwoofer (+12dB)
                             }
                             if (i <= 2) {
-                                val weight = if (i == 0) 1.0f else if (i == 1) 0.85f else 0.6f
-                                bandGainDb += (bassGain / 1000f) * bassMult * weight
+                                val weight = if (i == 0) 1.0f else if (i == 1) 0.8f else 0.5f
+                                bassStageDb += (bassGain / 1000f) * bassMult * weight
                             }
                         }
 
-                        // Module: Spectrum Extension (VSE - High Frequency Restoration)
+                        // 6. Spectrum Extension (VSE High-Frequency Restoration)
+                        var vseStageDb = 0f
                         if (currentSettings.isSpectrumExtensionEnabled) {
-                            val strength = (currentSettings.spectrumExtensionStrength + 1) * 1.8f
-                            if (i >= 7) bandGainDb += strength
+                            val strength = (currentSettings.spectrumExtensionStrength + 1) * 1.5f
+                            if (i >= 7) vseStageDb += strength
                         }
 
-                        // Module: Dynamic System Device Acoustic Modeling (Impedance & Resonance Compensation)
+                        // 7. Dynamic System Device Modeling Stage
+                        var dynamicStageDb = 0f
                         if (currentSettings.isDynamicSystemEnabled) {
-                            val dynRatio = (currentSettings.dynamicBassStrength / 30f).coerceIn(0.2f, 1.5f)
-                            bandGainDb += when (currentSettings.dynamicDevice) {
-                                0 -> if (i <= 2) 4.0f * dynRatio else if (i in 6..8) 2.0f * dynRatio else 0f // High-End Earphone: Deep sub-extension & crisp treble
-                                1 -> if (i <= 3) 6.0f * dynRatio else if (i in 4..6) -2.0f * dynRatio else 1.5f * dynRatio // Apple EarPods: Sub-bass rescue & midrange scoop
-                                2 -> if (i <= 2) 5.0f * dynRatio else if (i >= 7) 3.0f * dynRatio else 0f // Common Earphone: Wide bass & airy top
-                                3 -> if (i in 2..5) 2.5f * dynRatio else if (i <= 1) 1.5f * dynRatio else 0f // Studio Monitor: Neutral punch & linear vocal clarity
-                                4 -> if (i <= 2) 7.0f * dynRatio else if (i >= 8) 3.5f * dynRatio else 0f // High-End Headphone: Audiophile sub-rumble & hyper-detail
-                                else -> if (i <= 2) 4.0f * dynRatio else 0f
+                            val dynRatio = (currentSettings.dynamicBassStrength / 30f).coerceIn(0.2f, 1.2f)
+                            dynamicStageDb += when (currentSettings.dynamicDevice) {
+                                0 -> if (i <= 2) 3.0f * dynRatio else if (i in 6..8) 1.5f * dynRatio else 0f // High-End Earphone
+                                1 -> if (i <= 3) 4.5f * dynRatio else if (i in 4..6) -1.5f * dynRatio else 1.0f * dynRatio // Apple EarPods
+                                2 -> if (i <= 2) 3.5f * dynRatio else if (i >= 7) 2.0f * dynRatio else 0f // Common Earphone
+                                3 -> if (i in 2..5) 2.0f * dynRatio else if (i <= 1) 1.0f * dynRatio else 0f // Studio Monitor
+                                4 -> if (i <= 2) 5.0f * dynRatio else if (i >= 8) 2.5f * dynRatio else 0f // High-End Headphone
+                                else -> if (i <= 2) 3.0f * dynRatio else 0f
                             }
                         }
 
-                        // Module: Reverberation Acoustic Space Equalization (Simulates distance & room absorption)
+                        // 8. Reverberation Acoustic Space Stage
+                        var reverbStageDb = 0f
                         if (currentSettings.isReverbEnabled) {
                             val wetScale = currentSettings.reverbWetRatio / 100f
                             val roomScale = currentSettings.reverbRoomSize / 500f
-                            if (i in 3..6) bandGainDb += (2.5f * wetScale * roomScale) // Mid diffuse reverberance
-                            if (i >= 8) bandGainDb -= (1.5f * (1f - (currentSettings.reverbDampingFactor / 100f))) // HF damping rolloff
+                            if (i in 3..6) reverbStageDb += (2.0f * wetScale * roomScale)
+                            if (i >= 8) reverbStageDb -= (1.0f * (1f - (currentSettings.reverbDampingFactor / 100f)))
                         }
 
-                        // Module: ViPER-DDC Headphone Correction Profile
+                        // 9. ViPER-DDC Headphone Correction Profile
+                        var ddcStageDb = 0f
                         if (currentSettings.isDdcEnabled) {
-                            bandGainDb += when (currentSettings.ddcPreset) {
-                                1 -> if (i <= 1) 3.5f else if (i == 7) -3.0f else 0f // AirPods Pro Harman
-                                2 -> if (i in 2..3) -3.5f else if (i >= 8) 3.0f else 0f // Sony WH-1000XM4 De-mud
-                                3 -> if (i <= 1) 5.0f else if (i >= 8) 2.5f else 0f // Sennheiser HD650 Sub Air
-                                4 -> if (i == 8) -4.0f else if (i in 4..5) 2.0f else 0f // ATH-M50x Tamed Highs
-                                5 -> if (i == 7) -5.0f else if (i <= 1) 3.0f else 0f // Beyerdynamic DT990 Anti-Sibilance
-                                6 -> if (i in 3..4) 2.5f else if (i in 6..7) -2.5f else 0f // Bose QC45
-                                7 -> if (i <= 1) 3.5f else if (i in 6..7) -2.0f else 0f // Galaxy Buds2 Pro
+                            ddcStageDb += when (currentSettings.ddcPreset) {
+                                1 -> if (i <= 1) 2.5f else if (i == 7) -2.0f else 0f
+                                2 -> if (i in 2..3) -2.5f else if (i >= 8) 2.0f else 0f
+                                3 -> if (i <= 1) 3.5f else if (i >= 8) 1.5f else 0f
+                                4 -> if (i == 8) -2.5f else if (i in 4..5) 1.5f else 0f
+                                5 -> if (i == 7) -3.5f else if (i <= 1) 2.0f else 0f
+                                6 -> if (i in 3..4) 1.5f else if (i in 6..7) -1.5f else 0f
+                                7 -> if (i <= 1) 2.0f else if (i in 6..7) -1.5f else 0f
                                 else -> 0f
                             }
                         }
 
-                        // Module: AnalogX Class-A Harmonic Transformer Coloration
+                        // 10. AnalogX Transformer Stage
+                        var analogXStageDb = 0f
                         if (currentSettings.isAnalogXEnabled) {
-                            val axBoost = (currentSettings.analogXLevel + 1) * 2.5f
-                            if (i in 0..3) bandGainDb += axBoost // Rich low-mid body
-                            if (i >= 8) bandGainDb += (axBoost * 0.8f) // Extended silky air
+                            val axBoost = (currentSettings.analogXLevel + 1) * 1.8f
+                            if (i in 0..3) analogXStageDb += axBoost
+                            if (i >= 8) analogXStageDb += (axBoost * 0.6f)
                         }
 
-                        // Module: Auditory System Protection (Cure+ Crossfeed & Transient Taming)
+                        // 11. Auditory Protection & Speaker Optimization Stages
+                        var protectionStageDb = 0f
                         if (currentSettings.isAuditoryProtectionEnabled) {
-                            if (i in 6..8) bandGainDb -= 3.0f // Tame harsh sibilance frequencies (4kHz - 8kHz)
-                            if (i in 2..4) bandGainDb += 1.5f // Smooth vocal warmth
+                            if (i in 6..8) protectionStageDb -= 2.0f
+                            if (i in 2..4) protectionStageDb += 1.0f
                         }
-
-                        // Module: Speaker Optimization
+                        var speakerOptStageDb = 0f
                         if (currentSettings.isSpeakerOptEnabled) {
-                            if (i in 3..6) bandGainDb += 3.5f // Boost vocal speech clarity range on phone speakers
-                            if (i <= 1) bandGainDb -= 2.0f // Cut sub-bass to prevent speaker distortion
+                            if (i in 3..6) speakerOptStageDb += 2.5f
+                            if (i <= 1) speakerOptStageDb -= 1.5f
                         }
 
-                        val levelMB = (bandGainDb * 100f).coerceIn(-1500f, 1500f).toInt().toShort()
+                        // Decoupled Harmonic Summation with Headroom Protection:
+                        // Bass is routed in isolated low-frequency channels (0..2), Clarity in high (5..9), and EQ across all.
+                        // They NEVER overwrite or suppress each other's frequency headroom.
+                        val totalCompositeGainDb = userEqGainDb + bassStageDb + clarityStageDb +
+                            convolverStageDb + tubeStageDb + vseStageDb + dynamicStageDb +
+                            reverbStageDb + ddcStageDb + analogXStageDb + protectionStageDb + speakerOptStageDb
+
+                        val levelMB = (totalCompositeGainDb * 100f).coerceIn(-1500f, 1500f).toInt().toShort()
                         eq.setBandLevel(i.toShort(), levelMB)
                     }
                     if (!eq.enabled) eq.enabled = true

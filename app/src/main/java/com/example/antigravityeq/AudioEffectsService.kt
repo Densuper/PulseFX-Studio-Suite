@@ -638,58 +638,30 @@ class AudioEffectsService : Service() {
                 }
             }
 
-            // 2. ViPER Bass (Resonant sub-bass & powerful low-end boost up to +18dB)
+            // 2. ViPER Bass Hardware Stage (Clean Supplementary Low-End Sub-Octave Anchor)
             val bb = effects.bassBoost
             if (bb != null) {
-                var totalBass = 0
+                // Keep hardware bass boost clean and non-interfering:
+                // Only provide subtle hardware transducer excursion assistance when bass boost is explicitly active.
                 if (isEnabled && currentSettings.isBassEnabled) {
                     val baseBoost = if (currentSettings.bassBoost > 0) currentSettings.bassBoost else 600
-                    val multiplier = when (currentSettings.viperBassMode) {
-                        0 -> 1.0f // Natural
-                        1 -> 1.4f // Pure Bass+
-                        else -> 1.8f // Subwoofer
-                    }
-                    totalBass += (baseBoost * multiplier).toInt()
-                }
-                if (isEnabled && currentSettings.isDynamicSystemEnabled) {
-                    val dynStrength = if (currentSettings.dynamicBassStrength > 0) currentSettings.dynamicBassStrength else 14
-                    // Dynamic bass scaling from 0..30 mapped directly to 0..850 boost strength
-                    totalBass += (dynStrength * 35).coerceIn(50, 850)
-                }
-
-                if (totalBass > 0) {
-                    val strength = totalBass.coerceIn(0, 1000).toShort()
-                    bb.setStrength(strength)
+                    val cleanStrength = (baseBoost * 0.4f).toInt().coerceIn(0, 450).toShort()
+                    bb.setStrength(cleanStrength)
                     if (!bb.enabled) bb.enabled = true
                 } else {
                     if (bb.enabled) bb.enabled = false
                 }
             }
 
-            // 3. 3D Surround Field / Virtualizer (Field Surround + Differential Surround + Headphone Surround+ & Reverb Diffusion)
+            // 3. 3D Surround Field / Virtualizer (Clean Transparent Soundstage without phase smearing)
             val virt = effects.virtualizer
             if (virt != null) {
-                var totalSurround = 0
-                if (isEnabled && currentSettings.isFieldSurroundEnabled) {
+                // When Field Surround or VHE is active, supply subtle, transparent spatial widening (max 350)
+                // to prevent generic Android HRTF phase-cancellation and hollow vocal artifacts.
+                if (isEnabled && (currentSettings.isFieldSurroundEnabled || currentSettings.isHeadphoneSurroundEnabled)) {
                     val str = if (currentSettings.fieldSurroundStrength > 0) currentSettings.fieldSurroundStrength else 50
-                    // Map 0..100 slider directly to 0..1000 full hardware HRTF spatialization strength
-                    totalSurround += (str * 10).coerceIn(100, 1000)
-                }
-                if (isEnabled && currentSettings.isDiffSurroundEnabled) {
-                    val delay = if (currentSettings.diffSurroundDelay > 0) currentSettings.diffSurroundDelay else 5
-                    totalSurround += (delay * 50).coerceIn(100, 950)
-                }
-                if (isEnabled && currentSettings.isHeadphoneSurroundEnabled) {
-                    totalSurround += ((currentSettings.headphoneSurroundLevel + 1) * 200).coerceIn(200, 1000)
-                }
-                if (isEnabled && currentSettings.isReverbEnabled && currentSettings.reverbWetRatio > 0) {
-                    // Feed Reverb wet ratio directly into Virtualizer spatial reflections
-                    totalSurround += (currentSettings.reverbWetRatio * 6).coerceIn(0, 600)
-                }
-
-                if (totalSurround > 0) {
-                    val strength = totalSurround.coerceIn(0, 1000).toShort()
-                    virt.setStrength(strength)
+                    val cleanSurround = (str * 3.5f).toInt().coerceIn(100, 400).toShort()
+                    virt.setStrength(cleanSurround)
                     if (!virt.enabled) virt.enabled = true
                 } else {
                     if (virt.enabled) virt.enabled = false
@@ -703,9 +675,9 @@ class AudioEffectsService : Service() {
             if (isEnabled && currentSettings.isReverbEnabled) {
                 if (envRev != null) {
                     try {
-                        val wetMilliBels = ((currentSettings.reverbWetRatio / 100f) * 2000f - 1000f).toInt().toShort()
-                        val decayMs = (currentSettings.reverbRoomSize * 15).coerceIn(500, 7000)
-                        val roomLevelMb = ((currentSettings.reverbSoundField / 100f) * 2000f - 1000f).toInt().toShort()
+                        val wetMilliBels = ((currentSettings.reverbWetRatio / 100f) * 1200f - 600f).toInt().toShort()
+                        val decayMs = (currentSettings.reverbRoomSize * 10).coerceIn(400, 4000)
+                        val roomLevelMb = ((currentSettings.reverbSoundField / 100f) * 1200f - 600f).toInt().toShort()
 
                         envRev.roomLevel = roomLevelMb
                         envRev.decayTime = decayMs
@@ -719,9 +691,8 @@ class AudioEffectsService : Service() {
                 if (rev != null) {
                     val preset = when {
                         currentSettings.reverbRoomSize < 100 -> PresetReverb.PRESET_SMALLROOM
-                        currentSettings.reverbRoomSize < 200 -> PresetReverb.PRESET_MEDIUMROOM
-                        currentSettings.reverbRoomSize < 350 -> PresetReverb.PRESET_LARGEROOM
-                        else -> PresetReverb.PRESET_LARGEHALL
+                        currentSettings.reverbRoomSize < 250 -> PresetReverb.PRESET_MEDIUMROOM
+                        else -> PresetReverb.PRESET_LARGEROOM
                     }
                     rev.preset = preset
                     if (!rev.enabled) rev.enabled = true
@@ -731,13 +702,15 @@ class AudioEffectsService : Service() {
                 if (rev?.enabled == true) rev.enabled = false
             }
 
-            // 5. Master Output Pan (Stereo Spatial Channel Balance via Haas & Virtualizer)
+            // 5. Master Output Pan (Stereo Spatial Channel Balance)
             if (isEnabled && currentSettings.isLimiterEnabled && currentSettings.channelPan != 0) {
-                // Apply stereo channel panning via Virtualizer angle or system balance
                 val panNorm = (currentSettings.channelPan / 100f).coerceIn(-1f, 1f)
-                val panStrength = (Math.abs(panNorm) * 1000).toInt().toShort()
+                val panStrength = (Math.abs(panNorm) * 400).toInt().toShort()
                 virt?.let {
                     it.setStrength(panStrength)
+                    if (!it.enabled) it.enabled = true
+                }
+            }
                     if (!it.enabled) it.enabled = true
                 }
             }

@@ -11,8 +11,8 @@ android {
         applicationId = "com.example.antigravityeq"
         minSdk = 26
         targetSdk = 35
-        versionCode = 139
-        versionName = "1.4.4"
+        versionCode = 140
+        versionName = "1.4.5"
     }
 
     buildTypes {

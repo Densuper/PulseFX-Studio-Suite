@@ -404,14 +404,18 @@ class AudioEffectsService : Service() {
                             if (i in 1..4) tubeStageDb += tubeBoost
                         }
 
-                        // Field Surround Mid/Side Spatial Matrix Stage
+                        // Field Surround Mid/Side Spatial Matrix Stage (Pronounced 3D Room Width & Vocal Centering)
                         var surroundStageDb = 0f
                         if (currentSettings.isFieldSurroundEnabled) {
                             val surNorm = (currentSettings.fieldSurroundStrength / 100f).coerceIn(0.1f, 1.0f)
                             val midNorm = (currentSettings.midImageSize / 100f).coerceIn(0.1f, 1.0f)
-                            // Elevates 3D room air and vocal presence
-                            if (i in 4..6) surroundStageDb += (2.5f * midNorm) // Vocal Mid presence
-                            if (i >= 7) surroundStageDb += (3.5f * surNorm)    // Spatial Side air
+                            // Elevates 3D room soundstage air (bands 6..9) and focuses center vocal presence (bands 4..5)
+                            when (i) {
+                                4, 5 -> surroundStageDb += (4.5f * midNorm) // Vocal Mid presence & forward depth
+                                6 -> surroundStageDb += (3.0f * surNorm)    // Upper-mid stage bloom
+                                7 -> surroundStageDb += (5.5f * surNorm)    // Stereo width expansion
+                                8, 9 -> surroundStageDb += (8.0f * surNorm) // Extreme outer ear holographic air
+                            }
                         }
 
                         // 5. ViPER Bass Sub-Harmonic Low-End Stage (Bands 0..2)

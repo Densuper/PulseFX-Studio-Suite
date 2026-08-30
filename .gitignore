@@ -13,5 +13,8 @@ local.properties
 *.log
 *.zip
 *.apk
+*.jks
+*.keystore
+secrets.properties
 .env
 

@@ -443,18 +443,30 @@ class AudioEffectsService : Service() {
                             }
                         }
 
-                        // 5. ViPER Bass Sub-Harmonic Low-End Stage (Bands 0..2)
+                        // 5. ViPER Bass Sub-Harmonic Low-End Power Stage (Bands 0..2)
                         var bassStageDb = 0f
                         if (currentSettings.isBassEnabled) {
                             val bassGain = if (currentSettings.bassBoost > 0) currentSettings.bassBoost else 600
+                            val bassNorm = (bassGain / 1000f).coerceIn(0.1f, 1.0f)
                             val bassMult = when (currentSettings.viperBassMode) {
-                                0 -> 6f // Natural Bass (+6dB)
-                                1 -> 9f // Pure Bass+ (+9dB)
-                                else -> 12f // Subwoofer (+12dB)
+                                0 -> 14.0f // Natural Bass (+14dB maximum sub-bass bloom)
+                                1 -> 16.5f // Pure Bass+ (+16.5dB quadratic harmonic slam)
+                                else -> 18.5f // Subwoofer (+18.5dB earth-shaking sub-octave divider)
                             }
-                            if (i <= 2) {
-                                val weight = if (i == 0) 1.0f else if (i == 1) 0.8f else 0.5f
-                                bassStageDb += (bassGain / 1000f) * bassMult * weight
+                            val targetFreq = if (currentSettings.bassFrequency > 0) currentSettings.bassFrequency else 60
+                            when (i) {
+                                0 -> { // 31 Hz Sub-Bass
+                                    val subWeight = if (targetFreq <= 50) 1.0f else 0.85f
+                                    bassStageDb += (bassNorm * bassMult * subWeight)
+                                }
+                                1 -> { // 62 Hz Kick Punch
+                                    val punchWeight = if (targetFreq in 50..80) 1.0f else 0.90f
+                                    bassStageDb += (bassNorm * bassMult * punchWeight)
+                                }
+                                2 -> { // 125 Hz Mid-Bass Body
+                                    val midWeight = if (targetFreq >= 70) 0.85f else 0.65f
+                                    bassStageDb += (bassNorm * (bassMult * 0.75f) * midWeight)
+                                }
                             }
                         }
 
@@ -638,15 +650,18 @@ class AudioEffectsService : Service() {
                 }
             }
 
-            // 2. ViPER Bass Hardware Stage (Clean Supplementary Low-End Sub-Octave Anchor)
+            // 2. ViPER Bass Hardware Stage (Full Excursion Low-End Sub-Octave Anchor)
             val bb = effects.bassBoost
             if (bb != null) {
-                // Keep hardware bass boost clean and non-interfering:
-                // Only provide subtle hardware transducer excursion assistance when bass boost is explicitly active.
                 if (isEnabled && currentSettings.isBassEnabled) {
                     val baseBoost = if (currentSettings.bassBoost > 0) currentSettings.bassBoost else 600
-                    val cleanStrength = (baseBoost * 0.4f).toInt().coerceIn(0, 450).toShort()
-                    bb.setStrength(cleanStrength)
+                    val multiplier = when (currentSettings.viperBassMode) {
+                        0 -> 1.0f  // Natural
+                        1 -> 1.25f // Pure Bass+
+                        else -> 1.5f // Subwoofer
+                    }
+                    val fullStrength = (baseBoost * multiplier).toInt().coerceIn(100, 1000).toShort()
+                    bb.setStrength(fullStrength)
                     if (!bb.enabled) bb.enabled = true
                 } else {
                     if (bb.enabled) bb.enabled = false

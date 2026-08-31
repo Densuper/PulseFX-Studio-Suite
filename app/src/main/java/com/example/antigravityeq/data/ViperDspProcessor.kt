@@ -149,6 +149,11 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {
     private val dynamicSystemFilterL = BiquadFilter()
     private val dynamicSystemFilterR = BiquadFilter()
 
+    // Sub-Bass Mono-Lock Filters (120Hz HP on spatial side/decorrelation channels)
+    // Prevents spatial effects from smearing sub-bass phase, keeping kick drum 100% mono-centered
+    private val subBassMonoLockSurround = BiquadFilter()
+    private val subBassMonoLockDiff = BiquadFilter()
+
     // AGC Envelope State
     private var agcGain = 1.0f
 
@@ -179,6 +184,8 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {
         clarityFilterR.setHighPass(4500f, 1.0f, fs)
         dynamicSystemFilterL.setPeaking(80f, 3f, 1.0f, fs)
         dynamicSystemFilterR.setPeaking(80f, 3f, 1.0f, fs)
+        subBassMonoLockSurround.setHighPass(120f, 0.707f, fs)
+        subBassMonoLockDiff.setHighPass(120f, 0.707f, fs)
     }
 
     /**
@@ -446,17 +453,23 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {
                 }
             }
 
-            // 8. Field Surround (Mid-Side Matrix Spatializer)
+            // 8. Field Surround (Mid-Side Matrix Spatializer) with Sub-Bass Mono Lock
             if (s.isFieldSurroundEnabled && surroundWidth > 1.0f) {
                 val mid = (left + right) * 0.5f * midGain
-                val side = (left - right) * 0.5f * surroundWidth
+                var side = (left - right) * 0.5f * surroundWidth
+                // Sub-bass mono-lock: only spatialize frequencies above 120Hz
+                // Prevents phase cancellation and comb filtering on earphones below kick drum range
+                side = subBassMonoLockSurround.process(side)
                 left = mid + side
                 right = mid - side
             }
 
-            // 9. Differential Surround (Haas Inter-aural Time Delay)
+            // 9. Differential Surround (Haas Inter-aural Time Delay) with Sub-Bass Mono Lock
             if (s.isDiffSurroundEnabled) {
-                val diff = (left - right) * 0.5f
+                var diff = (left - right) * 0.5f
+                // Sub-bass mono-lock: only apply Haas delay to frequencies above 120Hz
+                // Prevents inter-aural time delay from creating sub-bass phase mud
+                diff = subBassMonoLockDiff.process(diff)
                 val delayedDiff = diffDelayBuffer[diffDelayIndex]
                 diffDelayBuffer[diffDelayIndex] = diff
                 diffDelayIndex = (diffDelayIndex + 1) % diffDelaySamples

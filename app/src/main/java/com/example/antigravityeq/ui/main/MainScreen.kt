@@ -69,7 +69,7 @@ fun MainScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "v1.3.6 • Sovereign DSP Audio Suite",
+                            text = "v1.6.0 • Sovereign DSP Audio Suite",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -150,7 +150,7 @@ fun MainScreen(
                 title = {
                     Column {
                         Text("PulseFX Studio", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("v1.3.6 • Sovereign DSP Audio Suite", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        Text("v1.6.4 • Sovereign DSP Audio Suite", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                 },
                 actions = {
@@ -679,7 +679,14 @@ fun MainScreen(
                         title = "Bass mode",
                         values = arrayOf("Natural bass", "Pure bass +", "Subwoofer"),
                         selectedIndex = settings.viperBassMode,
-                        onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(viperBassMode = idx) } }
+                        onSelectedIndexChange = { idx -> 
+                            val anchoredFreq = when (idx) {
+                                0 -> 80 // Natural Bass: Warm organic low foundation (80Hz)
+                                1 -> 60 // Pure Bass+: Chest-thumping kick punch (60Hz)
+                                else -> 45 // Subwoofer: Deep physical sub-octave rumble (45Hz)
+                            }
+                            viewModel.updateSettings { s -> s.copy(viperBassMode = idx, bassFrequency = anchoredFreq) } 
+                        }
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     InteractiveBassCurveGraph(

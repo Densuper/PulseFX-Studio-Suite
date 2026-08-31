@@ -8,10 +8,9 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +29,8 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import kotlin.math.abs
 import kotlin.math.log10
 import kotlin.math.pow
@@ -50,6 +51,7 @@ fun InteractiveFirequalizerCurve(
     liveLevels: FloatArray? = null,
     modifier: Modifier = Modifier
 ) {
+    var showExpandedModal by remember { mutableStateOf(false) }
     var selectedNodeIndex by remember { mutableStateOf<Int?>(null) }
     val textMeasurer = rememberTextMeasurer()
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -99,55 +101,15 @@ fun InteractiveFirequalizerCurve(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(14.dp))
                     .background(surfaceVariantColor)
-                    .border(1.dp, outlineColor.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                    .border(1.2.dp, outlineColor.copy(alpha = 0.25f), RoundedCornerShape(14.dp))
                     .pointerInput(displayLevels, isEqEnabled) {
-                        if (isEqEnabled) {
-                            awaitEachGesture {
-                                val down = awaitFirstDown(requireUnconsumed = false)
-                                down.consume()
-                                val width = size.width.toFloat()
-                                val height = size.height.toFloat()
-                                
-                                val tappedFreq = xToFreq(down.position.x, width)
-                                var closestIdx = 0
-                                var minDistance = Double.MAX_VALUE
-                                for (i in frequencies.indices) {
-                                    val dist = abs(log10(frequencies[i].toDouble()) - log10(tappedFreq))
-                                    if (dist < minDistance) {
-                                        minDistance = dist
-                                        closestIdx = i
-                                    }
-                                }
-                                selectedNodeIndex = closestIdx
-                                
-                                val newDb = yToDb(down.position.y, height).roundToInt().coerceIn(MIN_DB.toInt(), MAX_DB.toInt())
-                                val updated = bandLevels.toMutableList()
-                                if (closestIdx in updated.indices) {
-                                    updated[closestIdx] = newDb
-                                    onBandLevelsChange(updated)
-                                }
-                                
-                                do {
-                                    val event = awaitPointerEvent()
-                                    event.changes.forEach { change ->
-                                        if (change.pressed) {
-                                            change.consume()
-                                            val idx = selectedNodeIndex ?: closestIdx
-                                            val gainDb = yToDb(change.position.y, height).roundToInt()
-                                            val currentUpdated = bandLevels.toMutableList()
-                                            if (idx in currentUpdated.indices) {
-                                                currentUpdated[idx] = gainDb.coerceIn(MIN_DB.toInt(), MAX_DB.toInt())
-                                                onBandLevelsChange(currentUpdated)
-                                            }
-                                        }
-                                    }
-                                } while (event.changes.any { it.pressed })
-                                
-                                selectedNodeIndex = null
+                        detectTapGestures(
+                            onTap = {
+                                showExpandedModal = true
                             }
-                        }
+                        )
                     }
             ) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
@@ -319,7 +281,7 @@ fun InteractiveFirequalizerCurve(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Touch & drag nodes to sculpt curve",
+                text = "Tap graph to expand precision studio",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp
             )
@@ -334,6 +296,238 @@ fun InteractiveFirequalizerCurve(
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold
                 )
+            }
+        }
+
+        // Animated Precision Studio Modal Dialog for 10-Band Equalizer (Instant Auto-Save)
+        if (showExpandedModal) {
+            Dialog(
+                onDismissRequest = { showExpandedModal = false },
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth(0.96f)
+                        .wrapContentHeight()
+                        .clip(RoundedCornerShape(24.dp)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    "10-Band Studio Equalizer",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = primaryColor
+                                )
+                                Text(
+                                    "High-Precision Paragraphic Mastering Studio",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = onSurfaceVariantColor
+                                )
+                            }
+                            IconButton(
+                                onClick = { showExpandedModal = false },
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .background(surfaceVariantColor, CircleShape)
+                            ) {
+                                Text("✕", color = onSurfaceVariantColor, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        // Large 280dp Expanded Paragraphic Equalizer Canvas
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(280.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(surfaceVariantColor)
+                                .border(1.5.dp, primaryColor.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                                .pointerInput(displayLevels, isEqEnabled) {
+                                    if (isEqEnabled) {
+                                        awaitEachGesture {
+                                            val down = awaitFirstDown(requireUnconsumed = false)
+                                            down.consume()
+                                            val width = size.width.toFloat()
+                                            val height = size.height.toFloat()
+                                            
+                                            val tappedFreq = xToFreq(down.position.x, width)
+                                            var closestIdx = 0
+                                            var minDistance = Double.MAX_VALUE
+                                            for (i in frequencies.indices) {
+                                                val dist = abs(log10(frequencies[i].toDouble()) - log10(tappedFreq))
+                                                if (dist < minDistance) {
+                                                    minDistance = dist
+                                                    closestIdx = i
+                                                }
+                                            }
+                                            selectedNodeIndex = closestIdx
+                                            
+                                            val newDb = yToDb(down.position.y, height).roundToInt().coerceIn(MIN_DB.toInt(), MAX_DB.toInt())
+                                            val updated = bandLevels.toMutableList()
+                                            if (closestIdx in updated.indices) {
+                                                updated[closestIdx] = newDb
+                                                onBandLevelsChange(updated)
+                                            }
+                                            
+                                            do {
+                                                val event = awaitPointerEvent()
+                                                event.changes.forEach { change ->
+                                                    if (change.pressed) {
+                                                        change.consume()
+                                                        val idx = selectedNodeIndex ?: closestIdx
+                                                        val gainDb = yToDb(change.position.y, height).roundToInt()
+                                                        val currentUpdated = bandLevels.toMutableList()
+                                                        if (idx in currentUpdated.indices) {
+                                                            currentUpdated[idx] = gainDb.coerceIn(MIN_DB.toInt(), MAX_DB.toInt())
+                                                            onBandLevelsChange(currentUpdated)
+                                                        }
+                                                    }
+                                                }
+                                            } while (event.changes.any { it.pressed })
+                                            
+                                            selectedNodeIndex = null
+                                        }
+                                    }
+                                }
+                        ) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                val canvasWidth = size.width
+                                val canvasHeight = size.height
+                                
+                                val dbGuidelines = listOf(12f, 6f, 0f, -6f, -12f)
+                                dbGuidelines.forEach { db ->
+                                    val y = dbToY(db, canvasHeight)
+                                    val isZero = db == 0f
+                                    drawLine(
+                                        color = if (isZero) primaryColor.copy(alpha = 0.4f) else outlineColor.copy(alpha = 0.15f),
+                                        start = Offset(0f, y),
+                                        end = Offset(canvasWidth, y),
+                                        strokeWidth = if (isZero) 1.5f else 1f
+                                    )
+                                }
+                                
+                                val points = mutableListOf<Offset>()
+                                points.add(Offset(0f, dbToY(bandLevels.firstOrNull()?.toFloat()?.coerceIn(MIN_DB, MAX_DB) ?: 0f, canvasHeight)))
+                                
+                                frequencies.forEachIndexed { idx, freq ->
+                                    val gain = bandLevels.getOrElse(idx) { 0 }.toFloat().coerceIn(MIN_DB, MAX_DB)
+                                    val x = freqToX(freq.toDouble(), canvasWidth)
+                                    val y = dbToY(gain, canvasHeight)
+                                    points.add(Offset(x, y))
+                                }
+                                points.add(Offset(canvasWidth, dbToY(bandLevels.lastOrNull()?.toFloat()?.coerceIn(MIN_DB, MAX_DB) ?: 0f, canvasHeight)))
+                                
+                                val sampledSpline = computeCatmullRomSpline(points, steps = 24)
+                                if (sampledSpline.isNotEmpty()) {
+                                    val splineCurvePath = Path()
+                                    val fillPath = Path()
+                                    splineCurvePath.moveTo(sampledSpline[0].x, sampledSpline[0].y)
+                                    fillPath.moveTo(sampledSpline[0].x, canvasHeight)
+                                    fillPath.lineTo(sampledSpline[0].x, sampledSpline[0].y)
+                                    
+                                    for (i in 1 until sampledSpline.size) {
+                                        splineCurvePath.lineTo(sampledSpline[i].x, sampledSpline[i].y)
+                                        fillPath.lineTo(sampledSpline[i].x, sampledSpline[i].y)
+                                    }
+                                    fillPath.lineTo(canvasWidth, canvasHeight)
+                                    fillPath.close()
+                                    
+                                    drawPath(
+                                        path = fillPath,
+                                        brush = Brush.verticalGradient(
+                                            colors = listOf(
+                                                primaryColor.copy(alpha = 0.35f),
+                                                primaryColor.copy(alpha = 0.08f),
+                                                Color.Transparent
+                                            ),
+                                            startY = 0f,
+                                            endY = canvasHeight
+                                        )
+                                    )
+                                    drawPath(
+                                        path = splineCurvePath,
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(
+                                                primaryColor.copy(alpha = 0.8f),
+                                                primaryColor,
+                                                primaryColor.copy(alpha = 0.9f)
+                                            )
+                                        ),
+                                        style = Stroke(width = 4.5f, cap = StrokeCap.Round)
+                                    )
+                                }
+                                
+                                frequencies.forEachIndexed { idx, freq ->
+                                    val gain = bandLevels.getOrElse(idx) { 0 }.toFloat().coerceIn(MIN_DB, MAX_DB)
+                                    val x = freqToX(freq.toDouble(), canvasWidth)
+                                    val y = dbToY(gain, canvasHeight)
+                                    val isSelected = selectedNodeIndex == idx
+                                    
+                                    drawCircle(
+                                        color = if (isSelected) primaryColor else primaryColor.copy(alpha = 0.4f),
+                                        radius = if (isSelected) 22f else 14f,
+                                        center = Offset(x, y)
+                                    )
+                                    drawCircle(
+                                        color = if (isSelected) Color.White else primaryColor,
+                                        radius = if (isSelected) 10f else 6f,
+                                        center = Offset(x, y)
+                                    )
+                                    
+                                    val valueLabel = if (gain > 0) "+${gain.toInt()}dB" else "${gain.toInt()}dB"
+                                    drawText(
+                                        textMeasurer = textMeasurer,
+                                        text = valueLabel,
+                                        style = TextStyle(
+                                            color = if (isSelected) primaryColor else onSurfaceColor,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.ExtraBold
+                                        ),
+                                        topLeft = Offset(x - 16f, if (y < 40f) y + 16f else y - 28f)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Frequency Labels for Expanded Modal
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            freqLabels.forEach { label ->
+                                Text(text = label, color = onSurfaceVariantColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(onClick = { onBandLevelsChange(List(10) { 0 }) }) {
+                                Text("Reset Flat (0 dB)", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                            }
+                            Text(
+                                text = "⚡ Auto-Saved • Tap outside to close",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = onSurfaceVariantColor.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
             }
         }
     }

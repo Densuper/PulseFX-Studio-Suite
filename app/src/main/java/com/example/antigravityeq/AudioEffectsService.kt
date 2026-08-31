@@ -321,6 +321,12 @@ class AudioEffectsService : Service() {
                             0f
                         }
 
+                        // === NON-COLLIDING PIPELINE: EQ Inverse Decoupling Factor ===
+                        // When EQ is actively boosting/cutting this band, all secondary modules
+                        // yield headroom proportionally to prevent double-bass and treble ice-pick.
+                        // α = 1.0 (flat EQ, full module gain) → 0.20 (±12dB EQ, 80% yield)
+                        val eqAlpha = (1.0f - kotlin.math.abs(userEqGainDb) / 12.0f).coerceIn(0.20f, 1.0f)
+
                         // FET Compressor Makeup Gain & Punch Curve Stage
                         var fetStageDb = 0f
                         if (currentSettings.isFetCompressorEnabled) {
@@ -443,29 +449,42 @@ class AudioEffectsService : Service() {
                             }
                         }
 
-                        // 5. ViPER Bass Sub-Harmonic Low-End Power Stage (Bands 0..2)
+                        // 5. ViPER Bass Sub-Harmonic Master Power Stage (Golden Harmonic Ratio: 1.00 : 0.75 : 0.45)
                         var bassStageDb = 0f
                         if (currentSettings.isBassEnabled) {
                             val bassGain = if (currentSettings.bassBoost > 0) currentSettings.bassBoost else 600
                             val bassNorm = (bassGain / 1000f).coerceIn(0.1f, 1.0f)
-                            val bassMult = when (currentSettings.viperBassMode) {
-                                0 -> 14.0f // Natural Bass (+14dB maximum sub-bass bloom)
-                                1 -> 16.5f // Pure Bass+ (+16.5dB quadratic harmonic slam)
-                                else -> 18.5f // Subwoofer (+18.5dB earth-shaking sub-octave divider)
+                            
+                            // Mode-anchored physical sweet spots:
+                            // Subwoofer -> 45Hz sub rumble; Pure Bass+ -> 60Hz kick slam; Natural Bass -> 80Hz warm foundation
+                            val baseMult = when (currentSettings.viperBassMode) {
+                                0 -> 13.0f // Natural Bass
+                                1 -> 16.0f // Pure Bass+ (Harmonic Slam)
+                                else -> 18.0f // Subwoofer (Deep Sub-Octave)
                             }
-                            val targetFreq = if (currentSettings.bassFrequency > 0) currentSettings.bassFrequency else 60
+                            
                             when (i) {
-                                0 -> { // 31 Hz Sub-Bass
-                                    val subWeight = if (targetFreq <= 50) 1.0f else 0.85f
-                                    bassStageDb += (bassNorm * bassMult * subWeight)
+                                0 -> { // 31 Hz Sub-Bass (Fundamental f0)
+                                    val subWeight = when (currentSettings.viperBassMode) {
+                                        2 -> 1.00f // Subwoofer maximum sub weight
+                                        1 -> 0.85f // Pure Bass+ balanced sub
+                                        else -> 0.70f // Natural Bass
+                                    }
+                                    bassStageDb += (bassNorm * baseMult * subWeight)
                                 }
-                                1 -> { // 62 Hz Kick Punch
-                                    val punchWeight = if (targetFreq in 50..80) 1.0f else 0.90f
-                                    bassStageDb += (bassNorm * bassMult * punchWeight)
+                                1 -> { // 62 Hz Kick Punch (2nd Harmonic 2f0 - The Chest Punch Anchor)
+                                    val punchWeight = when (currentSettings.viperBassMode) {
+                                        1 -> 1.00f // Pure Bass+ maximum kick transient punch
+                                        0 -> 0.85f // Natural Bass warm punch
+                                        else -> 0.75f // Subwoofer
+                                    }
+                                    bassStageDb += (bassNorm * baseMult * 0.75f * (punchWeight / 0.75f))
                                 }
-                                2 -> { // 125 Hz Mid-Bass Body
-                                    val midWeight = if (targetFreq >= 70) 0.85f else 0.65f
-                                    bassStageDb += (bassNorm * (bassMult * 0.75f) * midWeight)
+                                2 -> { // 125 Hz Bass Body & Articulation (3rd Harmonic 3f0)
+                                    bassStageDb += (bassNorm * baseMult * 0.45f)
+                                }
+                                3 -> { // 250 Hz Low-Mid Anti-Mud Valley: Dynamically scoops -2.5dB to eliminate cardboard muddiness
+                                    bassStageDb -= (bassNorm * 2.5f)
                                 }
                             }
                         }
@@ -622,17 +641,56 @@ class AudioEffectsService : Service() {
                             }
                         }
 
-                        // 13. Decoupled Harmonic Summation with Automatic Dynamic Studio Headroom Gain Staging:
-                        // If a module is NOT enabled, its contribution is strictly 0.0dB.
-                        // When EQ is disabled, userEqGainDb is 0.0dB, so enabling Bass Boost only boosts bands 0..2 without flattening or touching the rest.
-                        var rawCompositeGainDb = userEqGainDb + fetStageDb + surroundStageDb + diffSurroundStageDb + vheStageDb + bassStageDb + clarityStageDb +
-                            convolverStageDb + tubeStageDb + vseStageDb + dynamicStageDb +
-                            reverbStageDb + ddcStageDb + analogXStageDb + protectionStageDb + speakerOptStageDb
+                        // === NON-COLLIDING PIPELINE: Inverse Decoupled Summation ===
+                        // Instead of blind additive stacking (+39dB worst case), each module yields
+                        // headroom when primary modules are already boosting the same frequency sector.
 
-                        // Studio Headroom Compression / Soft-Curve Normalization:
-                        // When multiple heavy saturation modules are active simultaneously, raw gain can reach +30dB to +40dB.
-                        // Instead of slamming into Android's +15dB hard clamp wall (which squashes dynamics & muddies sound),
-                        // we apply an elegant logarithmic soft-knee curve that maps high gains smoothly into the +6dB to +11.5dB audiophile sweet spot.
+                        // Secondary sector α factors: primary owners reduce downstream contributions
+                        val bassAlpha = if (currentSettings.isBassEnabled && i <= 2 && bassStageDb > 0f) {
+                            (1.0f - bassStageDb / 18.0f).coerceIn(0.25f, 1.0f)
+                        } else 1.0f
+
+                        val clarityAlpha = if (currentSettings.isClarityEnabled && i >= 5 && clarityStageDb > 0f) {
+                            (1.0f - clarityStageDb / 14.0f).coerceIn(0.25f, 1.0f)
+                        } else 1.0f
+
+                        // Decoupled Harmonic Summation with Frequency Domain Budgeting:
+                        // EQ = absolute master (full authority, zero scaling).
+                        // Primary sector owners (Bass for sub, Clarity for highs) yield to EQ only.
+                        // Secondary modules yield to BOTH EQ and their sector's primary owner.
+                        // Subtractive/corrective modules (Cure+, FET, Speaker) pass through unscaled.
+                        var rawCompositeGainDb = userEqGainDb +
+                            (bassStageDb * eqAlpha) +
+                            (clarityStageDb * eqAlpha) +
+                            (tubeStageDb * eqAlpha * bassAlpha) +
+                            (convolverStageDb * eqAlpha * (if (i <= 2) bassAlpha else if (i >= 7) clarityAlpha else 1.0f)) +
+                            (dynamicStageDb * eqAlpha * (if (i <= 2) bassAlpha else 1.0f)) +
+                            (analogXStageDb * eqAlpha * (if (i <= 2) bassAlpha else 1.0f)) +
+                            (vseStageDb * eqAlpha * (if (i >= 5) clarityAlpha else 1.0f)) +
+                            (surroundStageDb * eqAlpha * (if (i >= 5) clarityAlpha else 1.0f)) +
+                            (diffSurroundStageDb * eqAlpha * (if (i >= 5) clarityAlpha else 1.0f)) +
+                            (vheStageDb * eqAlpha * (if (i >= 5) clarityAlpha else 1.0f)) +
+                            (reverbStageDb * eqAlpha) +
+                            (ddcStageDb * ((1.0f + eqAlpha) * 0.5f)) +
+                            fetStageDb +
+                            protectionStageDb +
+                            speakerOptStageDb
+
+                        // Per-sector energy ceiling: prevents any one frequency region from being
+                        // crushed flat by the global soft-knee, preserving dynamics and separation.
+                        val sectorCeiling = when (i) {
+                            in 0..2 -> 15.0f   // Sub-bass: generous headroom for physical punch
+                            in 3..4 -> 12.0f   // Low-mid: tighter to prevent 250Hz mud wall
+                            in 5..6 -> 12.0f   // Mid: tighter for vocal clarity preservation
+                            else    -> 14.0f   // High: generous for air & sparkle
+                        }
+                        if (rawCompositeGainDb > sectorCeiling) {
+                            rawCompositeGainDb = sectorCeiling + (kotlin.math.ln(1f + (rawCompositeGainDb - sectorCeiling) * 0.3f) * 2.0f)
+                        } else if (rawCompositeGainDb < -sectorCeiling) {
+                            rawCompositeGainDb = -sectorCeiling - (kotlin.math.ln(1f + (-rawCompositeGainDb - sectorCeiling) * 0.3f) * 2.0f)
+                        }
+
+                        // Global soft-knee normalization (final safety net, now operates on sector-capped values)
                         val stagedGainDb = if (rawCompositeGainDb > 10.0f) {
                             10.0f + (kotlin.math.ln(1f + (rawCompositeGainDb - 10.0f) * 0.4f) * 2.5f)
                         } else if (rawCompositeGainDb < -10.0f) {
@@ -644,7 +702,32 @@ class AudioEffectsService : Service() {
                         val levelMB = (stagedGainDb * 100f).coerceIn(-1400f, 1400f).toInt().toShort()
                         eq.setBandLevel(i.toShort(), levelMB)
                     }
-                    if (!eq.enabled) eq.enabled = true
+
+                    // Dynamic Module Engagement Check:
+                    // If Master Power is ON, but ALL 18 modules are OFF:
+                    // Equalizer stays completely DISABLED (enabled = false) -> 100% Bit-Perfect Pure Passthrough!
+                    val isAnyDspModuleActive = currentSettings.isEqEnabled ||
+                        currentSettings.isBassEnabled ||
+                        currentSettings.isClarityEnabled ||
+                        currentSettings.isTubeEnabled ||
+                        currentSettings.isConvolverEnabled ||
+                        currentSettings.isFieldSurroundEnabled ||
+                        currentSettings.isDiffSurroundEnabled ||
+                        currentSettings.isHeadphoneSurroundEnabled ||
+                        currentSettings.isReverbEnabled ||
+                        currentSettings.isDynamicSystemEnabled ||
+                        currentSettings.isDdcEnabled ||
+                        currentSettings.isSpectrumExtensionEnabled ||
+                        currentSettings.isAnalogXEnabled ||
+                        currentSettings.isAuditoryProtectionEnabled ||
+                        currentSettings.isSpeakerOptEnabled ||
+                        currentSettings.isFetCompressorEnabled
+
+                    if (isAnyDspModuleActive) {
+                        if (!eq.enabled) eq.enabled = true
+                    } else {
+                        if (eq.enabled) eq.enabled = false
+                    }
                 } else {
                     if (eq.enabled) eq.enabled = false
                 }
@@ -727,7 +810,7 @@ class AudioEffectsService : Service() {
                 }
             }
 
-            // 6. Loudness Enhancer (Playback AGC Dynamic Ratio & Gain + Master Output Gain + Threshold Limiter Ceiling + Speaker Opt)
+            // 6. Loudness Enhancer (Playback AGC Dynamic Ratio & Gain + Master Output Gain + Speaker Opt)
             val le = effects.loudnessEnhancer
             if (le != null) {
                 val agcGainDb = if (isEnabled && currentSettings.isPlaybackAgcEnabled) {
@@ -742,8 +825,8 @@ class AudioEffectsService : Service() {
                 }
                 val spkOptGain = if (isEnabled && currentSettings.isSpeakerOptEnabled) 4 else 0
                 val masterGainDb = if (isEnabled && currentSettings.isLimiterEnabled) currentSettings.outputGain else 0
-                val thresholdDampening = if (isEnabled && currentSettings.isLimiterEnabled && currentSettings.limiterThreshold < 0) currentSettings.limiterThreshold * 2 else 0
-                val totalGainDb = (masterGainDb + agcGainDb + spkOptGain + thresholdDampening)
+                // Raw music preservation: Never subtract or dampen raw incoming music volume
+                val totalGainDb = (masterGainDb + agcGainDb + spkOptGain)
                 
                 if (isEnabled && totalGainDb != 0) {
                     val gainMb = (totalGainDb * 100).coerceIn(-2000, 2500)

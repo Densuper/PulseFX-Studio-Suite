@@ -207,53 +207,53 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {
 
         when (preset) {
             1 -> {
-                // Apple AirPods Pro: Tame 6kHz peak, elevate sub-bass
-                ddcFilterL1.setPeaking(6000f, -2.5f, 2.0f, fs)
-                ddcFilterR1.setPeaking(6000f, -2.5f, 2.0f, fs)
-                ddcFilterL2.setLowShelf(50f, 3.0f, 0.9f, fs)
-                ddcFilterR2.setLowShelf(50f, 3.0f, 0.9f, fs)
+                // Apple AirPods Pro: Sub-bass warmth & spatial air lift
+                ddcFilterL1.setLowShelf(50f, 3.0f, 0.9f, fs)
+                ddcFilterR1.setLowShelf(50f, 3.0f, 0.9f, fs)
+                ddcFilterL2.setHighShelf(12000f, 2.5f, 0.8f, fs)
+                ddcFilterR2.setHighShelf(12000f, 2.5f, 0.8f, fs)
             }
             2 -> {
-                // Sony WH-1000XM4: De-mud 250Hz, add 10kHz air
-                ddcFilterL1.setPeaking(250f, -3.5f, 1.4f, fs)
-                ddcFilterR1.setPeaking(250f, -3.5f, 1.4f, fs)
-                ddcFilterL2.setHighShelf(10000f, 2.5f, 0.8f, fs)
-                ddcFilterR2.setHighShelf(10000f, 2.5f, 0.8f, fs)
+                // Sony WH-1000XM4: Vocal intelligibility & LDAC 10kHz air
+                ddcFilterL1.setPeaking(1500f, 2.5f, 1.2f, fs)
+                ddcFilterR1.setPeaking(1500f, 2.5f, 1.2f, fs)
+                ddcFilterL2.setHighShelf(10000f, 3.5f, 0.8f, fs)
+                ddcFilterR2.setHighShelf(10000f, 3.5f, 0.8f, fs)
             }
             3 -> {
-                // Sennheiser HD650: Low-end extension, smooth upper highs
+                // Sennheiser HD650: Low-end extension & open-back shimmer
                 ddcFilterL1.setLowShelf(60f, 4.0f, 0.8f, fs)
                 ddcFilterR1.setLowShelf(60f, 4.0f, 0.8f, fs)
-                ddcFilterL2.setHighShelf(12000f, 1.5f, 0.7f, fs)
-                ddcFilterR2.setHighShelf(12000f, 1.5f, 0.7f, fs)
+                ddcFilterL2.setHighShelf(12000f, 3.0f, 0.7f, fs)
+                ddcFilterR2.setHighShelf(12000f, 3.0f, 0.7f, fs)
             }
             4 -> {
-                // Audio-Technica ATH-M50x: Tame aggressive 9kHz peak, warm midrange
-                ddcFilterL1.setPeaking(9000f, -3.0f, 2.5f, fs)
-                ddcFilterR1.setPeaking(9000f, -3.0f, 2.5f, fs)
-                ddcFilterL2.setPeaking(1200f, 1.0f, 1.0f, fs)
-                ddcFilterR2.setPeaking(1200f, 1.0f, 1.0f, fs)
+                // Audio-Technica ATH-M50x: Tight sub-punch & forward vocal stage
+                ddcFilterL1.setLowShelf(80f, 3.0f, 1.0f, fs)
+                ddcFilterR1.setLowShelf(80f, 3.0f, 1.0f, fs)
+                ddcFilterL2.setPeaking(1200f, 2.5f, 1.0f, fs)
+                ddcFilterR2.setPeaking(1200f, 2.5f, 1.0f, fs)
             }
             5 -> {
-                // Beyerdynamic DT990: Sharp anti-sibilance notch at 8kHz, sub balance
-                ddcFilterL1.setPeaking(8000f, -5.0f, 3.5f, fs)
-                ddcFilterR1.setPeaking(8000f, -5.0f, 3.5f, fs)
-                ddcFilterL2.setLowShelf(40f, 2.0f, 0.9f, fs)
-                ddcFilterR2.setLowShelf(40f, 2.0f, 0.9f, fs)
+                // Beyerdynamic DT990: Sub foundation & smooth pinna lift
+                ddcFilterL1.setLowShelf(50f, 3.5f, 0.9f, fs)
+                ddcFilterR1.setLowShelf(50f, 3.5f, 0.9f, fs)
+                ddcFilterL2.setPeaking(3000f, 2.0f, 1.2f, fs)
+                ddcFilterR2.setPeaking(3000f, 2.0f, 1.2f, fs)
             }
             6 -> {
-                // Bose QC45: Linear mid compensation
-                ddcFilterL1.setPeaking(800f, 1.5f, 1.2f, fs)
-                ddcFilterR1.setPeaking(800f, 1.5f, 1.2f, fs)
-                ddcFilterL2.setPeaking(3000f, -2.0f, 1.5f, fs)
-                ddcFilterR2.setPeaking(3000f, -2.0f, 1.5f, fs)
+                // Bose QC45: Rich low-mid body & clear vocal articulation
+                ddcFilterL1.setPeaking(800f, 2.5f, 1.2f, fs)
+                ddcFilterR1.setPeaking(800f, 2.5f, 1.2f, fs)
+                ddcFilterL2.setHighShelf(8000f, 2.0f, 0.8f, fs)
+                ddcFilterR2.setHighShelf(8000f, 2.0f, 0.8f, fs)
             }
             7 -> {
-                // Galaxy Buds2 Pro: Harman target alignment
-                ddcFilterL1.setLowShelf(60f, 2.0f, 0.9f, fs)
-                ddcFilterR1.setLowShelf(60f, 2.0f, 0.9f, fs)
-                ddcFilterL2.setPeaking(4000f, -1.5f, 1.8f, fs)
-                ddcFilterR2.setPeaking(4000f, -1.5f, 1.8f, fs)
+                // Galaxy Buds2 Pro: Harman plus sub-shelf & micro-detail
+                ddcFilterL1.setLowShelf(60f, 3.0f, 0.9f, fs)
+                ddcFilterR1.setLowShelf(60f, 3.0f, 0.9f, fs)
+                ddcFilterL2.setHighShelf(10000f, 3.0f, 0.8f, fs)
+                ddcFilterR2.setHighShelf(10000f, 3.0f, 0.8f, fs)
             }
             else -> {
                 // Flat / Generic reference

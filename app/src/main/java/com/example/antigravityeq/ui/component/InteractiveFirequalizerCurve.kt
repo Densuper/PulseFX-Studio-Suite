@@ -130,15 +130,58 @@ fun InteractiveFirequalizerCurve(
                         )
                     }
                     
-                    // Internal Vertical Frequency Grid Lines
-                    val gridFreqs = listOf(50.0, 100.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0, 16000.0)
-                    gridFreqs.forEach { freq ->
-                        val x = freqToX(freq, canvasWidth)
-                        drawLine(
-                            color = outlineColor.copy(alpha = 0.12f),
-                            start = Offset(x, 0f),
-                            end = Offset(x, canvasHeight),
-                            strokeWidth = 1f
+                    // LAYER 1.5: LIVE REAL-TIME AUDIO SPECTRUM WAVEFORM UNDERLAY
+                    val liveFft = com.example.antigravityeq.AudioEffectsService.liveFftLevels
+                    val fftWavePath = Path()
+                    val fftFillPath = Path()
+                    fftFillPath.moveTo(0f, canvasHeight)
+
+                    val fftPoints = mutableListOf<Offset>()
+                    fftPoints.add(Offset(0f, dbToY(liveFft.firstOrNull()?.coerceIn(MIN_DB, MAX_DB) ?: -12f, canvasHeight)))
+                    frequencies.forEachIndexed { idx, freq ->
+                        val magDb = liveFft.getOrElse(idx) { -12f }.coerceIn(MIN_DB, MAX_DB)
+                        val x = freqToX(freq.toDouble(), canvasWidth)
+                        val y = dbToY(magDb, canvasHeight)
+                        fftPoints.add(Offset(x, y))
+                    }
+                    fftPoints.add(Offset(canvasWidth, dbToY(liveFft.lastOrNull()?.coerceIn(MIN_DB, MAX_DB) ?: -12f, canvasHeight)))
+
+                    if (fftPoints.size >= 2) {
+                        fftWavePath.moveTo(fftPoints[0].x, fftPoints[0].y)
+                        fftFillPath.lineTo(fftPoints[0].x, fftPoints[0].y)
+                        for (i in 0 until fftPoints.size - 1) {
+                            val p0 = if (i > 0) fftPoints[i - 1] else fftPoints[i]
+                            val p1 = fftPoints[i]
+                            val p2 = fftPoints[i + 1]
+                            val p3 = if (i + 2 < fftPoints.size) fftPoints[i + 2] else p2
+                            val cp1x = p1.x + (p2.x - p0.x) / 6f
+                            val cp1y = p1.y + (p2.y - p0.y) / 6f
+                            val cp2x = p2.x - (p3.x - p1.x) / 6f
+                            val cp2y = p2.y - (p3.y - p1.y) / 6f
+                            fftWavePath.cubicTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y)
+                            fftFillPath.cubicTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y)
+                        }
+                        fftFillPath.lineTo(canvasWidth, canvasHeight)
+                        fftFillPath.close()
+
+                        // Translucent Living Spectral Shadow Fill
+                        drawPath(
+                            path = fftFillPath,
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    primaryColor.copy(alpha = 0.22f),
+                                    tertiaryColor.copy(alpha = 0.08f),
+                                    Color.Transparent
+                                ),
+                                startY = 0f,
+                                endY = canvasHeight
+                            )
+                        )
+                        // Glowing Waveform Contour
+                        drawPath(
+                            path = fftWavePath,
+                            color = primaryColor.copy(alpha = 0.40f),
+                            style = Stroke(width = 1.8f, cap = StrokeCap.Round)
                         )
                     }
                     

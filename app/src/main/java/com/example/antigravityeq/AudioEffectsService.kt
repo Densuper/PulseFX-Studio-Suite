@@ -545,58 +545,53 @@ class AudioEffectsService : Service() {
                             }
                         }
 
-                        // 9. ViPER-DDC Headphone Correction Profile (Acoustic Harmonization Curves)
+                        // 9. ViPER-DDC Headphone Correction Profile (Acoustic Harmonization Curves - 100% Additive Enhancement, Zero Muffle Cuts)
                         var ddcStageDb = 0f
                         if (currentSettings.isDdcEnabled) {
                             ddcStageDb += when (currentSettings.ddcPreset) {
                                 0 -> 0.0f // Generic / Flat Reference IEM (Neutral Studio Monitor)
                                 1 -> when (i) { // Apple AirPods Pro (Spatial Curve & Mid-Bass Warmth)
-                                    0, 1 -> 3.5f
+                                    0, 1 -> 3.0f // Deep sub foundation
                                     2 -> 2.0f
-                                    6 -> 1.5f
-                                    7 -> -3.0f // Tames harsh 4kHz resonance
-                                    8, 9 -> 2.5f
+                                    4, 5 -> 1.5f // Forward vocal presence
+                                    8, 9 -> 2.5f // Spatial air sheen
                                     else -> 0f
                                 }
-                                2 -> when (i) { // Sony WH-1000XM4 (Clarity & Tamed Mid-Bass Boom)
-                                    0, 1 -> -2.5f // Tames boomy 62Hz mud
-                                    4, 5 -> 2.0f  // Elevates vocal intelligibility
-                                    7, 8, 9 -> 4.5f // Injects Sony LDAC top-end shimmer
+                                2 -> when (i) { // Sony WH-1000XM4 (Vocal Intelligibility & LDAC Shimmer)
+                                    1 -> 1.5f
+                                    4, 5 -> 2.5f  // Elevates vocal intelligibility
+                                    7, 8, 9 -> 3.5f // Injects Sony LDAC top-end shimmer
                                     else -> 0f
                                 }
-                                3 -> when (i) { // Sennheiser HD650 (Diffuse Reference & Sub-Bass Extension)
-                                    0, 1 -> 5.0f // Compensates open-back sub-bass rolloff
+                                3 -> when (i) { // Sennheiser HD650 (Sub Extension & Silky Studio Air)
+                                    0, 1 -> 4.0f // Deep open-back sub extension
                                     2, 3 -> 1.5f
-                                    6, 7 -> -1.5f // Smooths 3-6kHz peak
+                                    4, 5 -> 1.0f
                                     8, 9 -> 3.0f // Airy top-end sparkle
                                     else -> 0f
                                 }
-                                4 -> when (i) { // Audio-Technica ATH-M50x (Tamed Highs & Linearized Mids)
-                                    0 -> 1.0f
-                                    2, 3 -> -2.0f
+                                4 -> when (i) { // Audio-Technica ATH-M50x (Tight Punch & Forward Mids)
+                                    0, 1 -> 3.0f // Punchy low-end impact
                                     4, 5 -> 2.5f // Restores recessed mid vocal stage
-                                    7, 8 -> -4.0f // Eliminates notorious 8kHz piercing sibilance
+                                    8, 9 -> 2.0f // Smooth top-end air
                                     else -> 0f
                                 }
-                                5 -> when (i) { // Beyerdynamic DT990 (Anti-Sibilance & Harman Lows)
+                                5 -> when (i) { // Beyerdynamic DT990 (Sub Foundation & Smooth Pinna Lift)
                                     0, 1 -> 3.5f // Sub-bass body
-                                    6, 7, 8 -> -5.5f // Aggressively cuts harsh Beyer treble peak
-                                    9 -> 2.0f // Ultra-high air extension
+                                    4, 5 -> 2.0f // Mid vocal warmth
+                                    8, 9 -> 2.5f // Crystalline air extension
                                     else -> 0f
                                 }
-                                6 -> when (i) { // Bose QuietComfort 45 (Linear Balanced & Vocal Lift)
-                                    0, 1 -> 2.0f
-                                    3, 4, 5 -> 3.5f // Lifts Bose nasal vocal box
-                                    7 -> -2.5f
-                                    8, 9 -> 2.0f
+                                6 -> when (i) { // Bose QuietComfort 45 (Rich Body & Vocal Intelligibility)
+                                    0, 1 -> 2.5f // Low body
+                                    3, 4, 5 -> 2.5f // Vocal clarity
+                                    8, 9 -> 2.0f // Upper air
                                     else -> 0f
                                 }
-                                7 -> when (i) { // Samsung Galaxy Buds2 Pro (Harman Target Target Match)
+                                7 -> when (i) { // Samsung Galaxy Buds2 Pro (Harman Plus Micro-Detail)
                                     0, 1 -> 3.0f // Harman sub-bass shelf
-                                    3 -> -1.5f
-                                    5, 6 -> 2.5f // Pinna gain lift
-                                    7 -> -2.0f
-                                    8, 9 -> 3.5f // Micro-detail air
+                                    4, 5 -> 2.0f // Pinna gain lift
+                                    8, 9 -> 3.0f // Micro-detail air
                                     else -> 0f
                                 }
                                 else -> 0f

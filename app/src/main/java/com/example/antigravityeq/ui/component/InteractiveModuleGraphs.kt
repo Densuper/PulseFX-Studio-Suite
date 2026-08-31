@@ -108,6 +108,49 @@ fun InteractiveBassCurveGraph(
                     else -> 0.15f * w // Subwoofer - steep sub peak
                 }
                 
+                // LAYER 1.5: LIVE REAL-TIME SUB-BASS ACOUSTIC PRESSURE WAVEFORM UNDERLAY
+                val liveFft = com.example.antigravityeq.AudioEffectsService.liveFftLevels
+                val liveBassEnergy = ((liveFft.getOrElse(0) { -12f } + liveFft.getOrElse(1) { -12f }) / 2f + 12f) / 24f
+                val subWavePath = Path()
+                val subFillPath = Path()
+                subFillPath.moveTo(0f, h)
+
+                val subWaveSteps = 30
+                for (s in 0..subWaveSteps) {
+                    val wx = (s.toFloat() / subWaveSteps) * w
+                    val distW = abs(wx - centerX)
+                    val subBell = exp(-(distW * distW) / (2f * qWidth * qWidth * 1.5f))
+                    val waveY = (h - 10f - (subBell * (liveBassEnergy.coerceIn(0.05f, 1f) * (h - 40f)))).coerceIn(10f, h)
+
+                    if (s == 0) {
+                        subWavePath.moveTo(wx, waveY)
+                        subFillPath.lineTo(wx, waveY)
+                    } else {
+                        subWavePath.lineTo(wx, waveY)
+                        subFillPath.lineTo(wx, waveY)
+                    }
+                }
+                subFillPath.lineTo(w, h)
+                subFillPath.close()
+
+                drawPath(
+                    path = subFillPath,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            primaryColor.copy(alpha = 0.20f),
+                            primaryColor.copy(alpha = 0.04f),
+                            Color.Transparent
+                        ),
+                        startY = 0f,
+                        endY = h
+                    )
+                )
+                drawPath(
+                    path = subWavePath,
+                    color = primaryColor.copy(alpha = 0.35f),
+                    style = Stroke(width = 1.8f, cap = StrokeCap.Round)
+                )
+                
                 val steps = 60
                 fillPath.moveTo(0f, h)
                 
@@ -472,6 +515,49 @@ fun InteractiveClarityCurveGraph(
                     )
                 }
                 
+                // LAYER 1.5: LIVE REAL-TIME HIGH-FREQUENCY AIR SHIMMER UNDERLAY
+                val liveFft = com.example.antigravityeq.AudioEffectsService.liveFftLevels
+                val liveHighEnergy = ((liveFft.getOrElse(8) { -12f } + liveFft.getOrElse(9) { -12f }) / 2f + 12f) / 24f
+                val airWavePath = Path()
+                val airFillPath = Path()
+                airFillPath.moveTo(0f, h)
+
+                val airSteps = 30
+                for (s in 0..airSteps) {
+                    val ax = (s.toFloat() / airSteps) * w
+                    val normProgress = (s.toFloat() / airSteps)
+                    val highShelf = 1f / (1f + exp(-6f * (normProgress - 0.5f)))
+                    val airY = (h - 10f - (highShelf * (liveHighEnergy.coerceIn(0.05f, 1f) * (h - 40f)))).coerceIn(10f, h)
+
+                    if (s == 0) {
+                        airWavePath.moveTo(ax, airY)
+                        airFillPath.lineTo(ax, airY)
+                    } else {
+                        airWavePath.lineTo(ax, airY)
+                        airFillPath.lineTo(ax, airY)
+                    }
+                }
+                airFillPath.lineTo(w, h)
+                airFillPath.close()
+
+                drawPath(
+                    path = airFillPath,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            primaryColor.copy(alpha = 0.20f),
+                            primaryColor.copy(alpha = 0.04f),
+                            Color.Transparent
+                        ),
+                        startY = 0f,
+                        endY = h
+                    )
+                )
+                drawPath(
+                    path = airWavePath,
+                    color = primaryColor.copy(alpha = 0.35f),
+                    style = Stroke(width = 1.8f, cap = StrokeCap.Round)
+                )
+
                 // High-shelf harmonic curve
                 val shelfGainNorm = (clarityGain / 1000f).coerceIn(0.05f, 1f)
                 val shelfHeight = shelfGainNorm * (h - 35f)
@@ -773,7 +859,9 @@ fun InteractiveCompressorGraph(
 ) {
     var showExpandedModal by remember { mutableStateOf(false) }
     val textMeasurer = rememberTextMeasurer()
+    val primaryColor = MaterialTheme.colorScheme.primary
     val tertiaryColor = MaterialTheme.colorScheme.tertiary
+    val errorColor = MaterialTheme.colorScheme.error
     val outlineColor = MaterialTheme.colorScheme.outline
     val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
     val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -901,6 +989,34 @@ fun InteractiveCompressorGraph(
                         color = Color.White,
                         radius = 3.5f,
                         center = Offset(threshX, threshY - makeupOffset)
+                    )
+
+                    // LAYER 1.5: LIVE REAL-TIME RMS INPUT BALLISTICS & GAIN REDUCTION TELEMETRY
+                    val liveFft = com.example.antigravityeq.AudioEffectsService.liveFftLevels
+                    var avgRmsDb = -40f
+                    if (liveFft.isNotEmpty()) {
+                        val sum = liveFft.sum() / liveFft.size
+                        avgRmsDb = (-18f + sum).coerceIn(-40f, 0f)
+                    }
+                    val opNorm = ((avgRmsDb - (-40f)) / 40f).coerceIn(0f, 1f)
+                    val opX = opNorm * (w - 24f) + 12f
+                    val opY = if (opX <= threshX) {
+                        (h - 12f) - (opNorm * (h - 24f)) - makeupOffset
+                    } else {
+                        threshY - ((opX - threshX) * slope) - makeupOffset
+                    }
+                    val isCompressing = avgRmsDb > thresholdDb.toFloat()
+
+                    // Telemetry Operating Point Pulse Dot
+                    drawCircle(
+                        color = if (isCompressing) errorColor.copy(alpha = 0.35f) else tertiaryColor.copy(alpha = 0.3f),
+                        radius = 12f,
+                        center = Offset(opX, opY)
+                    )
+                    drawCircle(
+                        color = if (isCompressing) errorColor else primaryColor,
+                        radius = 5f,
+                        center = Offset(opX, opY)
                     )
                     
                     // Readout info

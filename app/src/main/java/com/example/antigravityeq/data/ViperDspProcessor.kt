@@ -521,8 +521,10 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {
                 combBufferL1[combIdx1] = left + c1L * (0.72f - damp)
                 combBufferR1[combIdx1] = right + c1R * (0.72f - damp)
 
-                combIdx0 = (combIdx0 + 1) % (1200 + s.reverbRoomSize * 2)
-                combIdx1 = (combIdx1 + 1) % (1350 + s.reverbRoomSize * 2)
+                val combLen0 = (1200 + s.reverbRoomSize * 2).coerceIn(100, combBufferL0.size)
+                val combLen1 = (1350 + s.reverbRoomSize * 2).coerceIn(100, combBufferL1.size)
+                combIdx0 = (combIdx0 + 1) % combLen0
+                combIdx1 = (combIdx1 + 1) % combLen1
 
                 val revWetL = (c0L + c1L) * 0.5f
                 val revWetR = (c0R + c1R) * 0.5f

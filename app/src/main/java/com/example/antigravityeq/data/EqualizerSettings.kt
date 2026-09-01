@@ -93,7 +93,10 @@ data class EqualizerSettings(
     val isAuditoryProtectionEnabled: Boolean = false,
 
     // Speaker Optimization
-    val isSpeakerOptEnabled: Boolean = false
+    val isSpeakerOptEnabled: Boolean = false,
+
+    // Intelligent Acoustic Transducer Auto-Tune
+    val isTransducerAutoTuneEnabled: Boolean = true
 ) {
     companion object {
         private const val PREFS_NAME = "antigravity_viper_v4a_prefs"
@@ -258,6 +261,7 @@ data class EqualizerSettings(
 
             val isAuditoryProtectionEnabled = prefs.getBoolean("v4a_cure_enabled", false)
             val isSpeakerOptEnabled = prefs.getBoolean("v4a_spk_enabled", false)
+            val isTransducerAutoTuneEnabled = prefs.getBoolean("v4a_transducer_autotune_enabled", true)
 
             return EqualizerSettings(
                 selectedTab = selectedTab,
@@ -314,7 +318,8 @@ data class EqualizerSettings(
                 isAnalogXEnabled = isAnalogXEnabled,
                 analogXLevel = analogXLevel,
                 isAuditoryProtectionEnabled = isAuditoryProtectionEnabled,
-                isSpeakerOptEnabled = isSpeakerOptEnabled
+                isSpeakerOptEnabled = isSpeakerOptEnabled,
+                isTransducerAutoTuneEnabled = isTransducerAutoTuneEnabled
             )
         }
     }
@@ -382,6 +387,7 @@ data class EqualizerSettings(
 
             putBoolean("v4a_cure_enabled", isAuditoryProtectionEnabled)
             putBoolean("v4a_spk_enabled", isSpeakerOptEnabled)
+            putBoolean("v4a_transducer_autotune_enabled", isTransducerAutoTuneEnabled)
             apply()
         }
     }

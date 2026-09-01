@@ -2,6 +2,7 @@ package com.example.antigravityeq.ui.main
 
 import android.os.Build
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -150,7 +151,7 @@ fun MainScreen(
                 title = {
                     Column {
                         Text("PulseFX Studio", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("v1.7.0 • Sovereign DSP Audio Suite", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        Text("v1.7.5 • Intelligent Transducer Radar", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                 },
                 actions = {
@@ -291,62 +292,127 @@ fun MainScreen(
             }
             val connectedDeviceName = realDeviceName
 
+            val activeTransducer = remember(connectedDeviceName) {
+                com.example.antigravityeq.data.TransducerDatabase.resolve(connectedDeviceName)
+            }
+
+            // Transducer Hardware Intelligence Card with Diaphragm Pulse Animation
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)),
                 border = androidx.compose.foundation.BorderStroke(
                     1.dp,
                     if (settings.isEnabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                 )
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            // Pulsing Diaphragm Cone Animation
+                            val bassEnergy = if (liveFftLevels.isNotEmpty()) ((liveFftLevels[0] + liveFftLevels[1]) / 2f).coerceIn(0f, 1f) else 0f
+                            val pulseScale by androidx.compose.animation.core.animateFloatAsState(
+                                targetValue = if (settings.isEnabled) 1.0f + (bassEnergy * 0.35f) else 1.0f,
+                                animationSpec = androidx.compose.animation.core.spring(
+                                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                                    stiffness = androidx.compose.animation.core.Spring.StiffnessLow
+                                ),
+                                label = "diaphragmPulse"
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .graphicsLayer(scaleX = pulseScale, scaleY = pulseScale)
+                                    .background(
+                                        if (settings.isEnabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                                        androidx.compose.foundation.shape.CircleShape
+                                    )
+                                    .border(
+                                        1.5.dp,
+                                        if (settings.isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                                        androidx.compose.foundation.shape.CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (isBluetoothOn) "🎧" else if (isHeadsetOn) "🎚️" else "🔊",
+                                    fontSize = 16.sp
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = connectedDeviceName,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "${activeTransducer.driverDiameterMm}mm • ${activeTransducer.driverType}",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
                         Box(
                             modifier = Modifier
-                                .size(34.dp)
-                                .background(MaterialTheme.colorScheme.primaryContainer, androidx.compose.foundation.shape.CircleShape),
-                            contentAlignment = Alignment.Center
+                                .background(
+                                    if (settings.isEnabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
+                                    androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
-                                text = if (isBluetoothOn) "🎧" else if (isHeadsetOn) "🎚️" else "🔊",
-                                fontSize = 15.sp
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = connectedDeviceName,
+                                text = routeBadge,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "48 kHz / 24-bit PCM • 32-Bit Float Engine Active",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.primary
+                                fontSize = 10.sp,
+                                color = if (settings.isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-                    Box(
+
+                    // Transducer Acoustic Telemetry & Auto-Tune Bar
+                    Row(
                         modifier = Modifier
+                            .fillMaxWidth()
                             .background(
-                                if (settings.isEnabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
-                                androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
+                                androidx.compose.foundation.shape.RoundedCornerShape(10.dp)
                             )
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = routeBadge,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                            color = if (settings.isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "⚡ ${activeTransducer.resonanceFrequencyHz.toInt()}Hz Resonance Lock • ${activeTransducer.safeSubCutHz.toInt()}Hz Safe Excursion",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = "Auto-Tune",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (settings.isTransducerAutoTuneEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Switch(
+                                checked = settings.isTransducerAutoTuneEnabled,
+                                onCheckedChange = { viewModel.updateSettings { s -> s.copy(isTransducerAutoTuneEnabled = it) } },
+                                modifier = Modifier.graphicsLayer(scaleX = 0.75f, scaleY = 0.75f)
+                            )
+                        }
                     }
                 }
             }

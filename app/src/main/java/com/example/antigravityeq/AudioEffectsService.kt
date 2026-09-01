@@ -20,6 +20,8 @@ import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.antigravityeq.data.EqualizerSettings
+import com.example.antigravityeq.data.TransducerDatabase
+import com.example.antigravityeq.data.TransducerSpec
 import java.util.concurrent.ConcurrentHashMap
 
 class AudioEffectsService : Service() {
@@ -306,6 +308,23 @@ class AudioEffectsService : Service() {
         try {
             val isEnabled = currentSettings.isEnabled
 
+            // Query active audio device for Transducer Hardware Profiling
+            val audioManager = getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+            val currentDevice = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                audioManager?.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)?.firstOrNull {
+                    it.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                    it.type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET ||
+                    it.type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                    it.type == android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                    it.type == android.media.AudioDeviceInfo.TYPE_USB_HEADSET ||
+                    it.type == android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+                }
+            } else null
+            val activeTransducer = TransducerDatabase.resolve(
+                currentDevice?.productName?.toString(),
+                currentDevice?.type
+            )
+
             // 1. Unified 10-Band EQ & Multi-Module Harmonic Curve Synthesizer
             // Combines Manual EQ + ViPER Clarity Treble + Convolver Tape/Tube + DDC Compensation + Dynamic Bass + AnalogX + Tube + Cure + Speaker Opt
             val eq = effects.equalizer
@@ -503,11 +522,16 @@ class AudioEffectsService : Service() {
                             }
                         }
 
-                        // 7. Dynamic System Device Modeling Stage
+                        // 7. Dynamic System Device Modeling Stage (Auto-Calibrated by Transducer Database)
                         var dynamicStageDb = 0f
                         if (currentSettings.isDynamicSystemEnabled) {
                             val dynRatio = (currentSettings.dynamicBassStrength / 30f).coerceIn(0.2f, 1.2f)
-                            dynamicStageDb += when (currentSettings.dynamicDevice) {
+                            val effectiveDeviceMode = if (currentSettings.isTransducerAutoTuneEnabled) {
+                                activeTransducer.optimalDynamicMode
+                            } else {
+                                currentSettings.dynamicDevice
+                            }
+                            dynamicStageDb += when (effectiveDeviceMode) {
                                 0 -> if (i <= 2) 3.0f * dynRatio else if (i in 6..8) 1.5f * dynRatio else 0f // High-End Earphone
                                 1 -> if (i <= 3) 4.5f * dynRatio else if (i in 4..6) -1.5f * dynRatio else 1.0f * dynRatio // Apple EarPods
                                 2 -> if (i <= 2) 3.5f * dynRatio else if (i >= 7) 2.0f * dynRatio else 0f // Common Earphone

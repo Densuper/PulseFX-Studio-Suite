@@ -11,8 +11,8 @@ android {
         applicationId = "com.example.antigravityeq"
         minSdk = 26
         targetSdk = 35
-        versionCode = 175
-        versionName = "1.7.5"
+        versionCode = 180
+        versionName = "1.8.0"
     }
 
     signingConfigs {

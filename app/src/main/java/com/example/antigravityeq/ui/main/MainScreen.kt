@@ -142,6 +142,7 @@ fun MainScreen(
     }
 
     val liveFftLevels by viewModel.liveFftLevels.collectAsStateWithLifecycle()
+    var selectedDomainTab by remember { mutableStateOf(0) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -151,22 +152,21 @@ fun MainScreen(
                 title = {
                     Column {
                         Text("PulseFX Studio", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("v1.7.5 • Intelligent Transducer Radar", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        Text("v1.8.0 • 4-Domain Acoustic Suite", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                 },
                 actions = {
                     val context = androidx.compose.ui.platform.LocalContext.current
                     var isRefreshing by remember { mutableStateOf(false) }
 
-                    // Rounded Refresh Audio Stream Button
                     IconButton(
                         onClick = {
                             isRefreshing = true
                             try {
                                 val rebootIntent = android.content.Intent(context, com.example.antigravityeq.AudioEffectsService::class.java).apply {
-                                    action = com.example.antigravityeq.AudioEffectsService.ACTION_REBOOT_ENGINE
+                                    action = "com.example.antigravityeq.REBOOT_STREAM"
                                 }
-                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                                     context.startForegroundService(rebootIntent)
                                 } else {
                                     context.startService(rebootIntent)
@@ -223,11 +223,9 @@ fun MainScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(8.dp),
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Top Connected Earphones / Sources Card (Real Hardware Name Detection)
             val context = androidx.compose.ui.platform.LocalContext.current
             val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
             
@@ -291,14 +289,12 @@ fun MainScreen(
                 }
             }
             val connectedDeviceName = realDeviceName
-
             val activeTransducer = remember(connectedDeviceName) {
                 com.example.antigravityeq.data.TransducerDatabase.resolve(connectedDeviceName)
             }
 
-            // Transducer Hardware Intelligence Card with Diaphragm Pulse Animation
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)),
                 border = androidx.compose.foundation.BorderStroke(
@@ -306,19 +302,9 @@ fun MainScreen(
                     if (settings.isEnabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
                 )
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            // Pulsing Diaphragm Cone Animation
                             val bassEnergy = if (liveFftLevels.isNotEmpty()) ((liveFftLevels[0] + liveFftLevels[1]) / 2f).coerceIn(0f, 1f) else 0f
                             val pulseScale by androidx.compose.animation.core.animateFloatAsState(
                                 targetValue = if (settings.isEnabled) 1.0f + (bassEnergy * 0.35f) else 1.0f,
@@ -381,7 +367,6 @@ fun MainScreen(
                         }
                     }
 
-                    // Transducer Acoustic Telemetry & Auto-Tune Bar
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -417,418 +402,142 @@ fun MainScreen(
                 }
             }
 
-            // Master Limiter (Original #1 with Dedicated Module Toggle Switch)
-            EffectCard(
-                badgeText = "OUT",
-                name = "Master limiter",
-                enabled = settings.isLimiterEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isLimiterEnabled = it) } }
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ValueSlider(
-                        title = "Output gain",
-                        summary = "${settings.outputGain} dB",
-                        value = settings.outputGain,
-                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(outputGain = v) } },
-                        valueRange = -20..10
-                    )
-                    ValueSlider(
-                        title = "Output pan",
-                        summary = "${settings.channelPan}",
-                        value = settings.channelPan,
-                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(channelPan = v) } },
-                        valueRange = -100..100
-                    )
-                    ValueSlider(
-                        title = "Threshold limit",
-                        summary = "${settings.limiterThreshold} dB",
-                        value = settings.limiterThreshold,
-                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(limiterThreshold = v) } },
-                        valueRange = -3..0
-                    )
-                }
-            }
+            val domainTabs = listOf(
+                "🎛️ Tone & EQ",
+                "🏠 Room & Space",
+                "🎧 Hardware & DDC",
+                "🛡️ Dynamics & Safety"
+            )
 
-            // Playback Gain Control (Original #2)
-            EffectCard(
-                badgeText = "AGC",
-                name = "Playback gain control",
-                enabled = settings.isPlaybackAgcEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isPlaybackAgcEnabled = it) } }
+            ScrollableTabRow(
+                selectedTabIndex = selectedDomainTab,
+                edgePadding = 0.dp,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                contentColor = MaterialTheme.colorScheme.primary,
+                divider = {}
             ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ValuePicker(
-                        title = "Ratio",
-                        values = arrayOf("Slight", "Moderate", "Extreme"),
-                        selectedIndex = settings.playbackAgcRatio,
-                        onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(playbackAgcRatio = idx) } }
-                    )
-                    ValueSlider(
-                        title = "Max gain",
-                        summary = "${settings.playbackAgcMaxGain}x",
-                        value = settings.playbackAgcMaxGain,
-                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(playbackAgcMaxGain = v) } },
-                        valueRange = 0..18
-                    )
-                }
-            }
-
-            // FET Compressor (Original #3)
-            EffectCard(
-                badgeText = "FET",
-                name = "FET compressor",
-                enabled = settings.isFetCompressorEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isFetCompressorEnabled = it) } }
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    InteractiveCompressorGraph(
-                        thresholdDb = settings.fetThreshold,
-                        ratio = settings.fetRatio,
-                        makeupGainDb = settings.fetGain,
-                        onThresholdChange = { th -> viewModel.updateSettings { s -> s.copy(fetThreshold = th) } },
-                        onRatioChange = { rt -> viewModel.updateSettings { s -> s.copy(fetRatio = rt) } }
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    ValueSlider(
-                        title = "Makeup gain",
-                        summary = "+${settings.fetGain} dB",
-                        value = settings.fetGain,
-                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(fetGain = v) } },
-                        valueRange = 0..18
-                    )
-                }
-            }
-
-            // ViPER-DDC (Original #4)
-            EffectCard(
-                badgeText = "DDC",
-                name = "ViPER-DDC",
-                enabled = settings.isDdcEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isDdcEnabled = it) } }
-            ) {
-                ValuePicker(
-                    title = "Preset",
-                    values = EqualizerSettings.DDC_PRESET_NAMES.toTypedArray(),
-                    selectedIndex = settings.ddcPreset,
-                    onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(ddcPreset = idx) } }
-                )
-            }
-
-            // Spectrum Extension (Original #5)
-            EffectCard(
-                badgeText = "VSE",
-                name = "Spectrum extension",
-                enabled = settings.isSpectrumExtensionEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isSpectrumExtensionEnabled = it) } }
-            ) {
-                ValueSlider(
-                    title = "Strength",
-                    summary = "${settings.spectrumExtensionStrength}",
-                    value = settings.spectrumExtensionStrength,
-                    onValueChange = { v -> viewModel.updateSettings { s -> s.copy(spectrumExtensionStrength = v) } },
-                    valueRange = 0..10
-                )
-            }
-
-            // FIR Equalizer (Original #6 - Pure Clean Layout with Smooth Natural Real-Time Movement)
-            EffectCard(
-                badgeText = "EQ",
-                name = "FIR equalizer",
-                enabled = settings.isEqEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isEqEnabled = it) } }
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    ValuePicker(
-                        title = "Preset",
-                        values = EqualizerSettings.EQ_PRESET_NAMES.toTypedArray(),
-                        selectedIndex = settings.eqPreset,
-                        onSelectedIndexChange = { idx ->
-                            val presetValues = EqualizerSettings.EQ_PRESET_VALUES.getOrElse(idx) { List(10) { 0 } }
-                            viewModel.updateSettings { s ->
-                                s.copy(
-                                    eqPreset = idx,
-                                    bandLevels = presetValues
-                                )
-                            }
+                domainTabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedDomainTab == index,
+                        onClick = { selectedDomainTab = index },
+                        text = {
+                            Text(
+                                text = title,
+                                fontWeight = if (selectedDomainTab == index) FontWeight.Bold else FontWeight.Normal,
+                                fontSize = 12.sp
+                            )
                         }
                     )
-                    Spacer(modifier = Modifier.height(14.dp))
-                    InteractiveFirequalizerCurve(
-                        bandLevels = settings.bandLevels,
-                        onBandLevelsChange = { updatedLevels ->
-                            viewModel.updateSettings { s ->
-                                s.copy(
-                                    bandLevels = updatedLevels,
-                                    eqPreset = 0 // Custom
-                                )
-                            }
-                        },
-                        isEqEnabled = settings.isEqEnabled,
-                        liveLevels = liveFftLevels
-                    )
                 }
             }
 
-            // 8. Convolver
-            EffectCard(
-                badgeText = "IRS",
-                name = "Convolver",
-                enabled = settings.isConvolverEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isConvolverEnabled = it) } }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ValuePicker(
-                        title = "Impulse Response",
-                        values = EqualizerSettings.CONVOLVER_PRESET_NAMES.toTypedArray(),
-                        selectedIndex = settings.convolverPreset,
-                        onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(convolverPreset = idx) } }
-                    )
-                    ValueSlider(
-                        title = "Cross channel",
-                        summary = "${settings.convolverCrossChannel}%",
-                        value = settings.convolverCrossChannel,
-                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(convolverCrossChannel = v) } },
-                        valueRange = 0..100
-                    )
-                }
-            }
-
-            // Field Surround
-            EffectCard(
-                badgeText = "FS",
-                name = "Field surround",
-                enabled = settings.isFieldSurroundEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isFieldSurroundEnabled = it) } }
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ValueSlider(
-                        title = "Surround strength",
-                        summary = "${settings.fieldSurroundStrength}",
-                        value = settings.fieldSurroundStrength,
-                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(fieldSurroundStrength = v) } },
-                        valueRange = 0..100
-                    )
-                    ValueSlider(
-                        title = "Mid image strength",
-                        summary = "${settings.midImageSize}",
-                        value = settings.midImageSize,
-                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(midImageSize = v) } },
-                        valueRange = 0..100
-                    )
-                }
-            }
-
-            // Differential Surround
-            EffectCard(
-                badgeText = "DS",
-                name = "Differential surround",
-                enabled = settings.isDiffSurroundEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isDiffSurroundEnabled = it) } }
-            ) {
-                ValueSlider(
-                    title = "Delay",
-                    summary = "${settings.diffSurroundDelay} ms",
-                    value = settings.diffSurroundDelay,
-                    onValueChange = { v -> viewModel.updateSettings { s -> s.copy(diffSurroundDelay = v) } },
-                    valueRange = 0..20
-                )
-            }
-
-            // Headphone Surround+
-            EffectCard(
-                badgeText = "VHE",
-                name = "Headphone surround+",
-                enabled = settings.isHeadphoneSurroundEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isHeadphoneSurroundEnabled = it) } }
-            ) {
-                ValueSlider(
-                    title = "Effect level",
-                    summary = "${settings.headphoneSurroundLevel}",
-                    value = settings.headphoneSurroundLevel,
-                    onValueChange = { v -> viewModel.updateSettings { s -> s.copy(headphoneSurroundLevel = v) } },
-                    valueRange = 0..5
-                )
-            }
-
-            // Reverberation
-            EffectCard(
-                badgeText = "REV",
-                name = "Reverberation",
-                enabled = settings.isReverbEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isReverbEnabled = it) } }
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ValueSlider(
-                        title = "Room size",
-                        summary = "${settings.reverbRoomSize} m²",
-                        value = settings.reverbRoomSize,
-                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(reverbRoomSize = v) } },
-                        valueRange = 25..500
-                    )
-                    ValueSlider(
-                        title = "Wet ratio",
-                        summary = "${settings.reverbWetRatio}%",
-                        value = settings.reverbWetRatio,
-                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(reverbWetRatio = v) } },
-                        valueRange = 0..100
-                    )
-                }
-            }
-
-            // Dynamic System
-            EffectCard(
-                badgeText = "DYN",
-                name = "Dynamic system",
-                enabled = settings.isDynamicSystemEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isDynamicSystemEnabled = it) } }
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ValuePicker(
-                        title = "Listening device",
-                        values = EqualizerSettings.DYNAMIC_DEVICE_NAMES.toTypedArray(),
-                        selectedIndex = settings.dynamicDevice,
-                        onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(dynamicDevice = idx) } }
-                    )
-                    ValueSlider(
-                        title = "Dynamic bass",
-                        summary = "${settings.dynamicBassStrength}",
-                        value = settings.dynamicBassStrength,
-                        onValueChange = { v -> viewModel.updateSettings { s -> s.copy(dynamicBassStrength = v) } },
-                        valueRange = 0..30
-                    )
-                }
-            }
-
-            // Tube Simulator
-            EffectCard(
-                badgeText = "TUBE",
-                name = "Tube simulator (6N1P)",
-                enabled = settings.isTubeEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isTubeEnabled = it) } }
-            ) {
-                ValueSlider(
-                    title = "Tube warmth",
-                    summary = "${settings.tubeWarmth / 10}%",
-                    value = settings.tubeWarmth,
-                    onValueChange = { v -> viewModel.updateSettings { s -> s.copy(tubeWarmth = v) } },
-                    valueRange = 0..1000
-                )
-            }
-
-            // ViPER Bass
-            EffectCard(
-                badgeText = "BASS",
-                name = "ViPER bass",
-                enabled = settings.isBassEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isBassEnabled = it) } }
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    ValuePicker(
-                        title = "Bass mode",
-                        values = arrayOf("Natural bass", "Pure bass +", "Subwoofer"),
-                        selectedIndex = settings.viperBassMode,
-                        onSelectedIndexChange = { idx -> 
-                            val anchoredFreq = when (idx) {
-                                0 -> 80 // Natural Bass: Warm organic low foundation (80Hz)
-                                1 -> 60 // Pure Bass+: Chest-thumping kick punch (60Hz)
-                                else -> 45 // Subwoofer: Deep physical sub-octave rumble (45Hz)
-                            }
-                            viewModel.updateSettings { s -> s.copy(viperBassMode = idx, bassFrequency = anchoredFreq) } 
+                if (selectedDomainTab == 0) {
+                    EffectCard(badgeText = "EQ", name = "FIR equalizer (10-Band)", enabled = settings.isEqEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isEqEnabled = it) } }) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            ValuePicker(title = "Preset", values = EqualizerSettings.EQ_PRESET_NAMES.toTypedArray(), selectedIndex = settings.eqPreset, onSelectedIndexChange = { idx -> val presetValues = EqualizerSettings.EQ_PRESET_VALUES.getOrElse(idx) { List(10) { 0 } }; viewModel.updateSettings { s -> s.copy(eqPreset = idx, bandLevels = presetValues) } })
+                            Spacer(modifier = Modifier.height(14.dp))
+                            InteractiveFirequalizerCurve(bandLevels = settings.bandLevels, onBandLevelsChange = { updatedLevels -> viewModel.updateSettings { s -> s.copy(bandLevels = updatedLevels, eqPreset = 0) } }, isEqEnabled = settings.isEqEnabled, liveLevels = liveFftLevels)
                         }
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    InteractiveBassCurveGraph(
-                        frequencyHz = settings.bassFrequency,
-                        gainBoost = settings.bassBoost,
-                        mode = settings.viperBassMode,
-                        onFrequencyChange = { f -> viewModel.updateSettings { s -> s.copy(bassFrequency = f) } },
-                        onGainChange = { g -> viewModel.updateSettings { s -> s.copy(bassBoost = g) } }
-                    )
+                    }
+                    EffectCard(badgeText = "BASS", name = "ViPER bass", enabled = settings.isBassEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isBassEnabled = it) } }) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            ValuePicker(title = "Bass mode", values = arrayOf("Natural bass", "Pure bass +", "Subwoofer"), selectedIndex = settings.viperBassMode, onSelectedIndexChange = { idx -> val anchoredFreq = when(idx) { 0 -> 80; 1 -> 60; else -> 45 }; viewModel.updateSettings { s -> s.copy(viperBassMode = idx, bassFrequency = anchoredFreq) } })
+                            Spacer(modifier = Modifier.height(10.dp))
+                            InteractiveBassCurveGraph(frequencyHz = settings.bassFrequency, gainBoost = settings.bassBoost, mode = settings.viperBassMode, onFrequencyChange = { f -> viewModel.updateSettings { s -> s.copy(bassFrequency = f) } }, onGainChange = { g -> viewModel.updateSettings { s -> s.copy(bassBoost = g) } })
+                        }
+                    }
+                    EffectCard(badgeText = "CLR", name = "ViPER clarity", enabled = settings.isClarityEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isClarityEnabled = it) } }) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            ValuePicker(title = "Clarity mode", values = arrayOf("Natural", "Ozone+", "XHiFi"), selectedIndex = settings.clarityMode, onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(clarityMode = idx) } })
+                            Spacer(modifier = Modifier.height(10.dp))
+                            InteractiveClarityCurveGraph(clarityGain = settings.clarity, mode = settings.clarityMode, onGainChange = { g -> viewModel.updateSettings { s -> s.copy(clarity = g) } })
+                        }
+                    }
+                    EffectCard(badgeText = "TUBE", name = "Analog tube simulator (6N1P / 12AX7)", enabled = settings.isTubeEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isTubeEnabled = it) } }) {
+                        ValueSlider(title = "Tube warmth", summary = "${settings.tubeWarmth / 10}%", value = settings.tubeWarmth, onValueChange = { v -> viewModel.updateSettings { s -> s.copy(tubeWarmth = v) } }, valueRange = 0..1000)
+                    }
+                    EffectCard(badgeText = "VSE", name = "Spectrum extension", enabled = settings.isSpectrumExtensionEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isSpectrumExtensionEnabled = it) } }) {
+                        ValueSlider(title = "Strength", summary = "${settings.spectrumExtensionStrength}", value = settings.spectrumExtensionStrength, onValueChange = { v -> viewModel.updateSettings { s -> s.copy(spectrumExtensionStrength = v) } }, valueRange = 0..10)
+                    }
                 }
-            }
 
-            // ViPER Clarity
-            EffectCard(
-                badgeText = "CLR",
-                name = "ViPER clarity",
-                enabled = settings.isClarityEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isClarityEnabled = it) } }
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    ValuePicker(
-                        title = "Clarity mode",
-                        values = arrayOf("Natural", "Ozone+", "XHiFi"),
-                        selectedIndex = settings.clarityMode,
-                        onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(clarityMode = idx) } }
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    InteractiveClarityCurveGraph(
-                        clarityGain = settings.clarity,
-                        mode = settings.clarityMode,
-                        onGainChange = { g -> viewModel.updateSettings { s -> s.copy(clarity = g) } }
-                    )
+                if (selectedDomainTab == 1) {
+                    EffectCard(badgeText = "REV", name = "Schroeder-Moorer reverberation", enabled = settings.isReverbEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isReverbEnabled = it) } }) {
+                        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ValueSlider(title = "Room size", summary = "${settings.reverbRoomSize} m²", value = settings.reverbRoomSize, onValueChange = { v -> viewModel.updateSettings { s -> s.copy(reverbRoomSize = v) } }, valueRange = 25..500)
+                            ValueSlider(title = "Wet ratio", summary = "${settings.reverbWetRatio}%", value = settings.reverbWetRatio, onValueChange = { v -> viewModel.updateSettings { s -> s.copy(reverbWetRatio = v) } }, valueRange = 0..100)
+                            ValueSlider(title = "Damping factor", summary = "${settings.reverbDampingFactor}%", value = settings.reverbDampingFactor, onValueChange = { v -> viewModel.updateSettings { s -> s.copy(reverbDampingFactor = v) } }, valueRange = 0..100)
+                        }
+                    }
+                    EffectCard(badgeText = "FS", name = "Field surround (Mid/Side Matrix)", enabled = settings.isFieldSurroundEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isFieldSurroundEnabled = it) } }) {
+                        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ValueSlider(title = "Surround width", summary = "${settings.fieldSurroundStrength}%", value = settings.fieldSurroundStrength, onValueChange = { v -> viewModel.updateSettings { s -> s.copy(fieldSurroundStrength = v) } }, valueRange = 0..100)
+                            ValueSlider(title = "Mid vocal focus", summary = "${settings.midImageSize}%", value = settings.midImageSize, onValueChange = { v -> viewModel.updateSettings { s -> s.copy(midImageSize = v) } }, valueRange = 0..100)
+                        }
+                    }
+                    EffectCard(badgeText = "DS", name = "Differential surround (Haas ITD Delay)", enabled = settings.isDiffSurroundEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isDiffSurroundEnabled = it) } }) {
+                        ValueSlider(title = "Inter-aural delay", summary = "${settings.diffSurroundDelay} ms", value = settings.diffSurroundDelay, onValueChange = { v -> viewModel.updateSettings { s -> s.copy(diffSurroundDelay = v) } }, valueRange = 0..20)
+                    }
+                    EffectCard(badgeText = "VHE", name = "Headphone surround+ (Binaural Crossfeed)", enabled = settings.isHeadphoneSurroundEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isHeadphoneSurroundEnabled = it) } }) {
+                        ValueSlider(title = "Diffuse field level", summary = "${settings.headphoneSurroundLevel}", value = settings.headphoneSurroundLevel, onValueChange = { v -> viewModel.updateSettings { s -> s.copy(headphoneSurroundLevel = v) } }, valueRange = 0..5)
+                    }
                 }
-            }
 
-            // Auditory System Protection
-            EffectCard(
-                badgeText = "CURE",
-                name = "Auditory system protection",
-                enabled = settings.isAuditoryProtectionEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isAuditoryProtectionEnabled = it) } }
-            ) {
-                Text(
-                    text = "Cure+ crossfeed reduces ear fatigue during extended listening sessions.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp
-                )
-            }
+                if (selectedDomainTab == 2) {
+                    EffectCard(badgeText = "DDC", name = "ViPER-DDC (Headphone Correction)", enabled = settings.isDdcEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isDdcEnabled = it) } }) {
+                        ValuePicker(title = "Correction Curve", values = EqualizerSettings.DDC_PRESET_NAMES.toTypedArray(), selectedIndex = settings.ddcPreset, onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(ddcPreset = idx) } })
+                    }
+                    EffectCard(badgeText = "IRS", name = "Convolver (Analog Tape & Consoles)", enabled = settings.isConvolverEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isConvolverEnabled = it) } }) {
+                        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ValuePicker(title = "Impulse Model", values = EqualizerSettings.CONVOLVER_PRESET_NAMES.toTypedArray(), selectedIndex = settings.convolverPreset, onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(convolverPreset = idx) } })
+                            ValueSlider(title = "Cross channel", summary = "${settings.convolverCrossChannel}%", value = settings.convolverCrossChannel, onValueChange = { v -> viewModel.updateSettings { s -> s.copy(convolverCrossChannel = v) } }, valueRange = 0..100)
+                        }
+                    }
+                    EffectCard(badgeText = "DYN", name = "Dynamic system (Transducer Modeling)", enabled = settings.isDynamicSystemEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isDynamicSystemEnabled = it) } }) {
+                        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ValuePicker(title = "Listening device", values = EqualizerSettings.DYNAMIC_DEVICE_NAMES.toTypedArray(), selectedIndex = settings.dynamicDevice, onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(dynamicDevice = idx) } })
+                            ValueSlider(title = "Dynamic bass", summary = "${settings.dynamicBassStrength}", value = settings.dynamicBassStrength, onValueChange = { v -> viewModel.updateSettings { s -> s.copy(dynamicBassStrength = v) } }, valueRange = 0..30)
+                        }
+                    }
+                    EffectCard(badgeText = "AX", name = "AnalogX (Class-A Saturation)", enabled = settings.isAnalogXEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isAnalogXEnabled = it) } }) {
+                        ValuePicker(title = "Saturation Level", values = arrayOf("Level 1 (Subtle)", "Level 2 (Moderate)", "Level 3 (Extreme)"), selectedIndex = settings.analogXLevel.coerceIn(0, 2), onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(analogXLevel = idx) } })
+                    }
+                }
 
-            // AnalogX
-            EffectCard(
-                badgeText = "AX",
-                name = "AnalogX",
-                enabled = settings.isAnalogXEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isAnalogXEnabled = it) } }
-            ) {
-                ValuePicker(
-                    title = "Mode level",
-                    values = arrayOf("Level 1 (Subtle)", "Level 2 (Moderate)", "Level 3 (Extreme)"),
-                    selectedIndex = settings.analogXLevel.coerceIn(0, 2),
-                    onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(analogXLevel = idx) } }
-                )
-            }
-
-            // Speaker Optimization
-            EffectCard(
-                badgeText = "SPK",
-                name = "Speaker optimization",
-                enabled = settings.isSpeakerOptEnabled,
-                onEnabledChange = { viewModel.updateSettings { s -> s.copy(isSpeakerOptEnabled = it) } }
-            ) {
-                Text(
-                    text = "Acoustic correction profile optimized for device external speakers.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp
-                )
+                if (selectedDomainTab == 3) {
+                    EffectCard(badgeText = "OUT", name = "Master limiter & gate", enabled = settings.isLimiterEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isLimiterEnabled = it) } }) {
+                        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ValueSlider(title = "Output gain", summary = "${settings.outputGain} dB", value = settings.outputGain, onValueChange = { v -> viewModel.updateSettings { s -> s.copy(outputGain = v) } }, valueRange = -20..10)
+                            ValueSlider(title = "Output pan", summary = "${settings.channelPan}", value = settings.channelPan, onValueChange = { v -> viewModel.updateSettings { s -> s.copy(channelPan = v) } }, valueRange = -100..100)
+                            ValueSlider(title = "Threshold limit", summary = "${settings.limiterThreshold} dB", value = settings.limiterThreshold, onValueChange = { v -> viewModel.updateSettings { s -> s.copy(limiterThreshold = v) } }, valueRange = -3..0)
+                        }
+                    }
+                    EffectCard(badgeText = "FET", name = "FET compressor", enabled = settings.isFetCompressorEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isFetCompressorEnabled = it) } }) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            InteractiveCompressorGraph(thresholdDb = settings.fetThreshold, ratio = settings.fetRatio, makeupGainDb = settings.fetGain, onThresholdChange = { th -> viewModel.updateSettings { s -> s.copy(fetThreshold = th) } }, onRatioChange = { rt -> viewModel.updateSettings { s -> s.copy(fetRatio = rt) } })
+                            Spacer(modifier = Modifier.height(10.dp))
+                            ValueSlider(title = "Makeup gain", summary = "+${settings.fetGain} dB", value = settings.fetGain, onValueChange = { v -> viewModel.updateSettings { s -> s.copy(fetGain = v) } }, valueRange = 0..18)
+                        }
+                    }
+                    EffectCard(badgeText = "AGC", name = "Playback gain control (AGC)", enabled = settings.isPlaybackAgcEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isPlaybackAgcEnabled = it) } }) {
+                        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ValuePicker(title = "Ratio", values = arrayOf("Slight", "Moderate", "Extreme"), selectedIndex = settings.playbackAgcRatio, onSelectedIndexChange = { idx -> viewModel.updateSettings { s -> s.copy(playbackAgcRatio = idx) } })
+                            ValueSlider(title = "Max gain", summary = "${settings.playbackAgcMaxGain}x", value = settings.playbackAgcMaxGain, onValueChange = { v -> viewModel.updateSettings { s -> s.copy(playbackAgcMaxGain = v) } }, valueRange = 0..18)
+                        }
+                    }
+                    EffectCard(badgeText = "CURE", name = "Auditory system protection (Cure+)", enabled = settings.isAuditoryProtectionEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isAuditoryProtectionEnabled = it) } }) {
+                        Text(text = "Cure+ crossfeed reduces ear fatigue and sibilance during extended listening sessions.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                    }
+                    EffectCard(badgeText = "SPK", name = "Speaker optimization", enabled = settings.isSpeakerOptEnabled, onEnabledChange = { viewModel.updateSettings { s -> s.copy(isSpeakerOptEnabled = it) } }) {
+                        Text(text = "Anti-excursion sub-bass filtering and vocal presence clarity for device speakers.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                    }
+                }
             }
         }
     }

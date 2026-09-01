@@ -728,7 +728,7 @@ class AudioEffectsService : Service() {
                 }
             }
 
-            // 2. ViPER Bass Hardware Stage (Full Excursion Low-End Sub-Octave Anchor)
+            // 2. ViPER Bass Hardware Stage (Full Excursion Low-End Sub-Octave Anchor with Anti-Stacking Calibration)
             val bb = effects.bassBoost
             if (bb != null) {
                 if (isEnabled && currentSettings.isBassEnabled) {
@@ -738,7 +738,12 @@ class AudioEffectsService : Service() {
                         1 -> 1.25f // Pure Bass+
                         else -> 1.5f // Subwoofer
                     }
-                    val fullStrength = (baseBoost * multiplier).toInt().coerceIn(100, 1000).toShort()
+                    // Scale down hardware bass boost if composite software EQ already heavily boosts sub-bass
+                    val band0 = eq?.getBandLevel(0.toShort()) ?: 0
+                    val band1 = eq?.getBandLevel(1.toShort()) ?: 0
+                    val lowEndCompositeBoost = (band0 + band1) / 200f
+                    val hwScaling = if (lowEndCompositeBoost > 6.0f) (1.0f - (lowEndCompositeBoost - 6.0f) / 12.0f).coerceIn(0.35f, 1.0f) else 1.0f
+                    val fullStrength = (baseBoost * multiplier * hwScaling).toInt().coerceIn(50, 1000).toShort()
                     bb.setStrength(fullStrength)
                     if (!bb.enabled) bb.enabled = true
                 } else {

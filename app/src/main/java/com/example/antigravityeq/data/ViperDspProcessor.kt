@@ -149,6 +149,10 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {
     private val dynamicSystemFilterL = BiquadFilter()
     private val dynamicSystemFilterR = BiquadFilter()
 
+    // Spectrum Extension (VSE) Dedicated High-Pass Exciter Filters (8kHz crossover)
+    private val vseFilterL = BiquadFilter()
+    private val vseFilterR = BiquadFilter()
+
     // Sub-Bass Mono-Lock Filters (120Hz HP on spatial side/decorrelation channels)
     // Prevents spatial effects from smearing sub-bass phase, keeping kick drum 100% mono-centered
     private val subBassMonoLockSurround = BiquadFilter()
@@ -161,15 +165,15 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {
     private val diffDelayBuffer = FloatArray(2400)
     private var diffDelayIndex = 0
 
-    // Schroeder Reverb Comb & All-Pass Delays
-    private val combBufferL0 = FloatArray(1557)
-    private val combBufferL1 = FloatArray(1617)
-    private val combBufferL2 = FloatArray(1491)
-    private val combBufferL3 = FloatArray(1422)
-    private val combBufferR0 = FloatArray(1583)
-    private val combBufferR1 = FloatArray(1643)
-    private val combBufferR2 = FloatArray(1517)
-    private val combBufferR3 = FloatArray(1448)
+    // Schroeder Reverb Comb & All-Pass Delays (Expanded to 2400 to support up to 500m² room size safely)
+    private val combBufferL0 = FloatArray(2400)
+    private val combBufferL1 = FloatArray(2400)
+    private val combBufferL2 = FloatArray(2400)
+    private val combBufferL3 = FloatArray(2400)
+    private val combBufferR0 = FloatArray(2400)
+    private val combBufferR1 = FloatArray(2400)
+    private val combBufferR2 = FloatArray(2400)
+    private val combBufferR3 = FloatArray(2400)
     private var combIdx0 = 0
     private var combIdx1 = 0
     private var combIdx2 = 0
@@ -184,6 +188,8 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {
         clarityFilterR.setHighPass(4500f, 1.0f, fs)
         dynamicSystemFilterL.setPeaking(80f, 3f, 1.0f, fs)
         dynamicSystemFilterR.setPeaking(80f, 3f, 1.0f, fs)
+        vseFilterL.setHighPass(8000f, 0.707f, fs)
+        vseFilterR.setHighPass(8000f, 0.707f, fs)
         subBassMonoLockSurround.setHighPass(120f, 0.707f, fs)
         subBassMonoLockDiff.setHighPass(120f, 0.707f, fs)
     }
@@ -306,8 +312,8 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {
         val clarityGainFactor = (s.clarity / 1000f) * 1.8f
         val tubeDrive = 1f + (s.tubeWarmth / 1000f) * 3.0f
         val tubeWarmthNorm = s.tubeWarmth / 1000f
-        val surroundWidth = (s.fieldSurroundStrength / 1000f) * 2.2f + 1.0f
-        val midGain = (s.midImageSize / 500f).coerceIn(0.5f, 1.5f)
+        val surroundWidth = (s.fieldSurroundStrength / 100f) * 1.5f + 1.0f
+        val midGain = (s.midImageSize / 100f).coerceIn(0.5f, 1.5f)
         val outGainScalar = 10f.pow(s.outputGain / 20f)
         val panLeft = if (s.channelPan < 0) 1f else (100f - s.channelPan) / 100f
         val panRight = if (s.channelPan > 0) 1f else (100f + s.channelPan) / 100f
@@ -369,74 +375,93 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {
 
             // 5. ViPER Bass (Dynamic Psychoacoustic Harmonic Synthesizer)
             if (s.isBassEnabled && bassGainFactor > 0f) {
-                val lowL = bassFilterL.process(left)
-                val lowR = bassFilterR.process(right)
-                val synthL = when (s.viperBassMode) {
-                    0 -> lowL * 2.2f // Natural Bass: Phase-aligned resonant low boost
-                    1 -> (if (lowL > 0) lowL * lowL else -(lowL * lowL)) * 3.5f // Pure Bass+: Quadratic harmonic overtone synthesis
-                    else -> sin(lowL.coerceIn(-1.5f, 1.5f) * Math.PI.toFloat()) * 4.0f // Subwoofer: Sub-octave fundamental waveform divider
+                val subL = bassFilterL.process(left)
+                val subR = bassFilterR.process(right)
+
+                when (s.viperBassMode) {
+                    0 -> {
+                        // Natural Bass: Pure low-frequency linear enhancement
+                        left += subL * bassGainFactor
+                        right += subR * bassGainFactor
+                    }
+                    1 -> {
+                        // Pure Bass+: Even harmonic synthesis (quadratic rectifier)
+                        val harmL = (subL * subL) * (if (subL > 0) 1f else -1f)
+                        val harmR = (subR * subR) * (if (subR > 0) 1f else -1f)
+                        left += (subL * 0.7f + harmL * 0.8f) * bassGainFactor
+                        right += (subR * 0.7f + harmR * 0.8f) * bassGainFactor
+                    }
+                    else -> {
+                        // Subwoofer: Deep sub-harmonic octave generation (sub-octave cubic synthesizer)
+                        val subOctL = (subL * subL * subL) * 1.5f
+                        val subOctR = (subR * subR * subR) * 1.5f
+                        left += (subL * 0.6f + subOctL * 1.2f) * bassGainFactor
+                        right += (subR * 0.6f + subOctR * 1.2f) * bassGainFactor
+                    }
                 }
-                val synthR = when (s.viperBassMode) {
-                    0 -> lowR * 2.2f
-                    1 -> (if (lowR > 0) lowR * lowR else -(lowR * lowR)) * 3.5f
-                    else -> sin(lowR.coerceIn(-1.5f, 1.5f) * Math.PI.toFloat()) * 4.0f
-                }
-                left += synthL * bassGainFactor
-                right += synthR * bassGainFactor
             }
 
-            // 6. ViPER Clarity / XHiFi (High-Frequency Harmonic Exciter & Transient Restorer)
+            // 6. ViPER Clarity (Dynamic Treble Exciter & Harmonic Restorer)
             if (s.isClarityEnabled && clarityGainFactor > 0f) {
                 val highL = clarityFilterL.process(left)
                 val highR = clarityFilterR.process(right)
-                val exciterL = when (s.clarityMode) {
-                    0 -> highL * 1.8f // Natural: High-shelf acoustic air & crisp transient restore
-                    1 -> (abs(highL) - 0.5f * highL) * 2.8f // Ozone+: Asymmetrical even-order dynamic exciter
-                    else -> (highL * highL * (if (highL > 0) 1f else -1f)) * 4.0f // XHiFi Pro: Full cubic overtone expansion
+
+                when (s.clarityMode) {
+                    0 -> {
+                        // Natural: Transparent high-frequency linear presence
+                        left += highL * clarityGainFactor
+                        right += highR * clarityGainFactor
+                    }
+                    1 -> {
+                        // Ozone+: Asymmetrical soft-knee harmonic exciter
+                        val exciterL = tanh(highL * 1.8f)
+                        val exciterR = tanh(highR * 1.8f)
+                        left += exciterL * clarityGainFactor
+                        right += exciterR * clarityGainFactor
+                    }
+                    else -> {
+                        // XHiFi Pro: High-frequency spectral restorer with 3rd harmonic sheen
+                        val sheenL = highL + (highL * highL * highL) * 0.6f
+                        val sheenR = highR + (highR * highR * highR) * 0.6f
+                        left += sheenL * clarityGainFactor
+                        right += sheenR * clarityGainFactor
+                    }
                 }
-                val exciterR = when (s.clarityMode) {
-                    0 -> highR * 1.8f
-                    1 -> (abs(highR) - 0.5f * highR) * 2.8f
-                    else -> (highR * highR * (if (highR > 0) 1f else -1f)) * 4.0f
-                }
-                left += exciterL * clarityGainFactor
-                right += exciterR * clarityGainFactor
             }
 
-            // 7. Convolver & Analog Tape/Tube Impulse Coloration
+            // 7. Convolver & Analog Tape/IRS Emulation
             if (s.isConvolverEnabled) {
-                val cross = (s.convolverCrossChannel / 100f) * 0.35f
-                val crossL = left * (1f - cross) + right * cross
-                val crossR = right * (1f - cross) + left * cross
+                val crossL = left * (1f - s.convolverCrossChannel / 200f) + right * (s.convolverCrossChannel / 200f)
+                val crossR = right * (1f - s.convolverCrossChannel / 200f) + left * (s.convolverCrossChannel / 200f)
 
                 when (s.convolverPreset) {
                     0 -> {
-                        // Studer A800 Mastering Tape (Tape Head Saturation & Compression)
-                        left = (tanh(crossL * 1.5f) * 0.90f + crossL * 0.10f)
-                        right = (tanh(crossR * 1.5f) * 0.90f + crossR * 0.10f)
+                        // Studer A800 Mastering Tape (Warm soft saturation & tape compression)
+                        left = tanh(crossL * 1.25f) / 1.15f
+                        right = tanh(crossR * 1.25f) / 1.15f
                     }
                     1 -> {
-                        // Telefunken 12AX7 Tube (2nd Harmonic Warmth)
-                        left = tanh(crossL * 1.35f) + 0.18f * crossL * crossL
-                        right = tanh(crossR * 1.35f) + 0.18f * crossR * crossR
+                        // Telefunken 12AX7 Dual Triode Tube (Rich 2nd-order harmonic bloom)
+                        left = crossL + 0.18f * (crossL * crossL * (if (crossL > 0) 1f else -1f))
+                        right = crossR + 0.18f * (crossR * crossR * (if (crossR > 0) 1f else -1f))
                     }
                     2 -> {
-                        // Sony Walkman MegaBass IRS (Punchy Low Saturation)
-                        left = tanh(crossL * 1.8f) * 1.2f
-                        right = tanh(crossR * 1.8f) * 1.2f
+                        // Sony Walkman MegaBass IRS Profile (Punchy analog bass contour)
+                        left = crossL * 1.1f + (crossL * crossL * crossL) * 0.08f
+                        right = crossR * 1.1f + (crossR * crossR * crossR) * 0.08f
                     }
                     3 -> {
-                        // Lexicon 480L Hall Ambience
-                        left = crossL * 0.9f + right * 0.1f
-                        right = crossR * 0.9f + left * 0.1f
+                        // Lexicon 480L Concert Hall (Subtle acoustic spatial blend)
+                        left = crossL * 0.95f + crossR * 0.15f
+                        right = crossR * 0.95f + crossL * 0.15f
                     }
                     4 -> {
-                        // Dolby Atmos Cinema Spatial Stage
-                        left = crossL * 1.15f - crossR * 0.15f
-                        right = crossR * 1.15f - crossL * 0.15f
+                        // Dolby Atmos Cinema Stage (Binaural diffuse reflection)
+                        left = crossL * 0.92f - crossR * 0.12f
+                        right = crossR * 0.92f - crossL * 0.12f
                     }
                     5 -> {
-                        // Neve 1073 British Console Transformer
+                        // Rupert Neve 1073 Console Transformer
                         left = tanh(crossL * 1.3f) + 0.10f * crossL
                         right = tanh(crossR * 1.3f) + 0.10f * crossR
                     }
@@ -527,11 +552,11 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {
                 }
             }
 
-            // 13. Spectrum Extension (VSE High-Frequency Re-synthesis)
+            // 13. Spectrum Extension (VSE High-Frequency Re-synthesis with Dedicated 8kHz High-Pass Biquads)
             if (s.isSpectrumExtensionEnabled && s.spectrumExtensionStrength > 0) {
                 val vseGain = (s.spectrumExtensionStrength / 4f) * 0.35f
-                val hfL = left - (bassFilterL.process(left))
-                val hfR = right - (bassFilterR.process(right))
+                val hfL = vseFilterL.process(left)
+                val hfR = vseFilterR.process(right)
                 val excL = (hfL * hfL * hfL) * 1.8f
                 val excR = (hfR * hfR * hfR) * 1.8f
                 left += excL * vseGain

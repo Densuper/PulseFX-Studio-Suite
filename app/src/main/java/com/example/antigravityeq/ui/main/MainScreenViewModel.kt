@@ -25,10 +25,23 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
     val liveFftLevels: StateFlow<FloatArray> = _liveFftLevels.asStateFlow()
 
     init {
-        // Polling loop for smooth 60 FPS live spectrum animation in UI
+        // Simulated 60 FPS live spectrum animation in UI (requires zero microphone permissions)
         viewModelScope.launch(Dispatchers.Default) {
+            var timeOffset = 0f
             while (isActive) {
-                _liveFftLevels.value = AudioEffectsService.liveFftLevels
+                if (_uiState.value.isEnabled) {
+                    val simulatedFft = FloatArray(10)
+                    for (i in 0 until 10) {
+                        // Generate organic looking multi-sine wave animation
+                        val base = kotlin.math.sin(timeOffset * (1.5f + i * 0.2f)) * 4f
+                        val harmonic = kotlin.math.cos(timeOffset * 0.7f + i) * 3f
+                        simulatedFft[i] = -8f + base + harmonic
+                    }
+                    _liveFftLevels.value = simulatedFft
+                    timeOffset += 0.1f
+                } else {
+                    _liveFftLevels.value = FloatArray(10) { -12f }
+                }
                 delay(16L)
             }
         }
@@ -241,14 +254,12 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
     // 19. Factory Reset
     fun resetToDefaults() = updateSettings { EqualizerSettings() }
 
-    private fun saveAndBroadcast() {
-        val s = _uiState.value
-        s.save(context)
-
-        // 1. AudioEffectsService (Broadcast AudioFlinger / Android Framework Session Hook)
+    // 20. Refresh & Rescan Audio Sessions
+    fun refreshSession() {
+        _uiState.value = EqualizerSettings.load(context)
         try {
             val intent = Intent(context, AudioEffectsService::class.java).apply {
-                action = AudioEffectsService.ACTION_UPDATE_SETTINGS
+                action = AudioEffectsService.ACTION_REBOOT_ENGINE
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
@@ -256,6 +267,29 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
                 context.startService(intent)
             }
         } catch (e: Exception) {}
+    }
+
+    private var broadcastJob: kotlinx.coroutines.Job? = null
+
+    private fun saveAndBroadcast() {
+        val s = _uiState.value
+        broadcastJob?.cancel()
+        broadcastJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(40) // Smooth debounce to prevent audio engine crackling and buffer starvation during rapid drags
+            s.save(context)
+
+            // 1. AudioEffectsService (Broadcast AudioFlinger / Android Framework Session Hook)
+            try {
+                val intent = Intent(context, AudioEffectsService::class.java).apply {
+                    action = AudioEffectsService.ACTION_UPDATE_SETTINGS
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Exception) {}
+        }
     }
 }
 

@@ -1,5 +1,6 @@
 package com.example.antigravityeq.ui.component
 
+import com.example.antigravityeq.AudioEffectsService
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -104,12 +105,56 @@ fun InteractiveFirequalizerCurve(
                     .clip(RoundedCornerShape(14.dp))
                     .background(surfaceVariantColor)
                     .border(1.2.dp, outlineColor.copy(alpha = 0.25f), RoundedCornerShape(14.dp))
-                    .pointerInput(displayLevels, isEqEnabled) {
-                        detectTapGestures(
-                            onTap = {
-                                showExpandedModal = true
+                    .pointerInput(bandLevels, isEqEnabled) {
+                        if (isEqEnabled) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                down.consume()
+                                val width = size.width.toFloat()
+                                val height = size.height.toFloat()
+                                
+                                val tappedFreq = xToFreq(down.position.x, width)
+                                var closestIdx = 0
+                                var minDistance = Double.MAX_VALUE
+                                for (i in frequencies.indices) {
+                                    val dist = abs(log10(frequencies[i].toDouble()) - log10(tappedFreq))
+                                    if (dist < minDistance) {
+                                        minDistance = dist
+                                        closestIdx = i
+                                    }
+                                }
+                                selectedNodeIndex = closestIdx
+                                
+                                val newDb = yToDb(down.position.y, height).roundToInt().coerceIn(MIN_DB.toInt(), MAX_DB.toInt())
+                                val updated = bandLevels.toMutableList()
+                                if (closestIdx in updated.indices) {
+                                    updated[closestIdx] = newDb
+                                    onBandLevelsChange(updated)
+                                }
+                                
+                                do {
+                                    val event = awaitPointerEvent()
+                                    event.changes.forEach { change ->
+                                        if (change.pressed) {
+                                            change.consume()
+                                            val idx = selectedNodeIndex ?: closestIdx
+                                            val gainDb = yToDb(change.position.y, height).roundToInt()
+                                            val currentUpdated = bandLevels.toMutableList()
+                                            if (idx in currentUpdated.indices) {
+                                                currentUpdated[idx] = gainDb.coerceIn(MIN_DB.toInt(), MAX_DB.toInt())
+                                                onBandLevelsChange(currentUpdated)
+                                            }
+                                        }
+                                    }
+                                } while (event.changes.any { it.pressed })
+                                
+                                selectedNodeIndex = null
                             }
-                        )
+                        } else {
+                            detectTapGestures(
+                                onTap = { showExpandedModal = true }
+                            )
+                        }
                     }
             ) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
@@ -164,24 +209,11 @@ fun InteractiveFirequalizerCurve(
                         fftFillPath.lineTo(canvasWidth, canvasHeight)
                         fftFillPath.close()
 
-                        // Translucent Living Spectral Shadow Fill
-                        drawPath(
-                            path = fftFillPath,
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    primaryColor.copy(alpha = 0.22f),
-                                    tertiaryColor.copy(alpha = 0.08f),
-                                    Color.Transparent
-                                ),
-                                startY = 0f,
-                                endY = canvasHeight
-                            )
-                        )
-                        // Glowing Waveform Contour
+                        // Pure Minimalist Single-Line Waveform Contour that moves dynamically with music (Grey Shadow Line)
                         drawPath(
                             path = fftWavePath,
-                            color = primaryColor.copy(alpha = 0.40f),
-                            style = Stroke(width = 1.8f, cap = StrokeCap.Round)
+                            color = onSurfaceVariantColor.copy(alpha = 0.50f),
+                            style = Stroke(width = 2.0f, cap = StrokeCap.Round)
                         )
                     }
                     
@@ -459,6 +491,48 @@ fun InteractiveFirequalizerCurve(
                                         start = Offset(0f, y),
                                         end = Offset(canvasWidth, y),
                                         strokeWidth = if (isZero) 1.5f else 1f
+                                    )
+                                }
+                                
+                                // LIVE REAL-TIME AUDIO SPECTRUM WAVEFORM UNDERLAY (Grey Shadow Line)
+                                val liveFft = com.example.antigravityeq.AudioEffectsService.liveFftLevels
+                                val fftWavePath = Path()
+                                val fftFillPath = Path()
+                                fftFillPath.moveTo(0f, canvasHeight)
+
+                                val fftPoints = mutableListOf<Offset>()
+                                fftPoints.add(Offset(0f, dbToY(liveFft.firstOrNull()?.coerceIn(MIN_DB, MAX_DB) ?: -12f, canvasHeight)))
+                                frequencies.forEachIndexed { idx, freq ->
+                                    val magDb = liveFft.getOrElse(idx) { -12f }.coerceIn(MIN_DB, MAX_DB)
+                                    val x = freqToX(freq.toDouble(), canvasWidth)
+                                    val y = dbToY(magDb, canvasHeight)
+                                    fftPoints.add(Offset(x, y))
+                                }
+                                fftPoints.add(Offset(canvasWidth, dbToY(liveFft.lastOrNull()?.coerceIn(MIN_DB, MAX_DB) ?: -12f, canvasHeight)))
+
+                                if (fftPoints.size >= 2) {
+                                    fftWavePath.moveTo(fftPoints[0].x, fftPoints[0].y)
+                                    fftFillPath.lineTo(fftPoints[0].x, fftPoints[0].y)
+                                    for (i in 0 until fftPoints.size - 1) {
+                                        val p0 = if (i > 0) fftPoints[i - 1] else fftPoints[i]
+                                        val p1 = fftPoints[i]
+                                        val p2 = fftPoints[i + 1]
+                                        val p3 = if (i + 2 < fftPoints.size) fftPoints[i + 2] else p2
+                                        val cp1x = p1.x + (p2.x - p0.x) / 6f
+                                        val cp1y = p1.y + (p2.y - p0.y) / 6f
+                                        val cp2x = p2.x - (p3.x - p1.x) / 6f
+                                        val cp2y = p2.y - (p3.y - p1.y) / 6f
+                                        fftWavePath.cubicTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y)
+                                        fftFillPath.cubicTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y)
+                                    }
+                                    fftFillPath.lineTo(canvasWidth, canvasHeight)
+                                    fftFillPath.close()
+
+                                    // Pure Minimalist Single-Line Waveform Contour that moves dynamically with music (Grey Shadow Line)
+                                    drawPath(
+                                        path = fftWavePath,
+                                        color = onSurfaceVariantColor.copy(alpha = 0.50f),
+                                        style = Stroke(width = 2.0f, cap = StrokeCap.Round)
                                     )
                                 }
                                 

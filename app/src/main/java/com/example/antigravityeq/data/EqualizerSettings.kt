@@ -21,7 +21,7 @@ data class EqualizerSettings(
     // Firequalizer (10-Band Linear / Minimum Phase Graphic EQ)
     val isEqEnabled: Boolean = false,
     val eqPreset: Int = 0, // Preset index (Custom, Acoustic, Bass Booster, etc.)
-    val bandLevels: List<Int> = listOf(4, 3, 1, 0, -1, 1, 2, 3, 3, 4),
+    val bandLevels: List<Int> = listOf(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
 
     // Convolver (IRS / Analog Tape & Tube Impulses)
     val isConvolverEnabled: Boolean = false,
@@ -96,7 +96,14 @@ data class EqualizerSettings(
     val isSpeakerOptEnabled: Boolean = false,
 
     // Intelligent Acoustic Transducer Auto-Tune
-    val isTransducerAutoTuneEnabled: Boolean = true
+    val isTransducerAutoTuneEnabled: Boolean = false,
+
+    // Module 19: 3D Spatial Audio Matrix (Cinema, Concert Hall & 360° Sphere Immersion)
+    val isSpatialAudioEnabled: Boolean = false,
+    val spatialAudioMode: Int = 0, // 0 = 360° Holographic Sphere, 1 = Dolby Atmos Cinema Stage, 2 = Concert Hall Immersion
+    val spatialAudioAngle: Int = 180, // 30° to 180° Virtual Speaker Separation Angle (Defaulted to 180° for full stage wrap)
+    val spatialDirection: Int = 1, // 0 = Orbiting Holographic Multi-Angle, 1 = Front Center 180° Panorama (Anchored Vocals + Wide Wings), 2 = Side & Rear Binaural Hemispheres, 3 = Overhead 3D Elevation
+    val instrumentSeparation: Int = 85 // 0 to 100% (Frequency-Domain Instrument Spatial Displacement & Phase Unmasking)
 ) {
     companion object {
         private const val PREFS_NAME = "antigravity_viper_v4a_prefs"
@@ -199,10 +206,10 @@ data class EqualizerSettings(
             val isDdcEnabled = prefs.getBoolean("v4a_ddc_enabled", false)
             val ddcPreset = prefs.getInt("v4a_ddc_preset", 0)
 
-            val isEqEnabled = prefs.getBoolean("v4a_eq_enabled", true)
+            val isEqEnabled = prefs.getBoolean("v4a_eq_enabled", false)
             val eqPreset = prefs.getInt("v4a_eq_preset", 0)
             val bandLevels = (0 until 10).map { i ->
-                prefs.getInt("v4a_eq_band_$i", if (i == 0) 4 else if (i == 1) 3 else if (i >= 8) 3 else 0)
+                prefs.getInt("v4a_eq_band_$i", 0)
             }
 
             val isConvolverEnabled = prefs.getBoolean("v4a_convolver_enabled", false)
@@ -261,7 +268,12 @@ data class EqualizerSettings(
 
             val isAuditoryProtectionEnabled = prefs.getBoolean("v4a_cure_enabled", false)
             val isSpeakerOptEnabled = prefs.getBoolean("v4a_spk_enabled", false)
-            val isTransducerAutoTuneEnabled = prefs.getBoolean("v4a_transducer_autotune_enabled", true)
+            val isTransducerAutoTuneEnabled = prefs.getBoolean("v4a_transducer_autotune_enabled", false)
+            val isSpatialAudioEnabled = prefs.getBoolean("v4a_spatial_enabled", false)
+            val spatialAudioMode = prefs.getInt("v4a_spatial_mode", 0)
+            val spatialAudioAngle = prefs.getInt("v4a_spatial_angle", 180)
+            val spatialDirection = prefs.getInt("v4a_spatial_direction", 1)
+            val instrumentSeparation = prefs.getInt("v4a_spatial_instrument_sep", 85)
 
             return EqualizerSettings(
                 selectedTab = selectedTab,
@@ -319,8 +331,17 @@ data class EqualizerSettings(
                 analogXLevel = analogXLevel,
                 isAuditoryProtectionEnabled = isAuditoryProtectionEnabled,
                 isSpeakerOptEnabled = isSpeakerOptEnabled,
-                isTransducerAutoTuneEnabled = isTransducerAutoTuneEnabled
+                isTransducerAutoTuneEnabled = isTransducerAutoTuneEnabled,
+                isSpatialAudioEnabled = isSpatialAudioEnabled,
+                spatialAudioMode = spatialAudioMode,
+                spatialAudioAngle = spatialAudioAngle,
+                spatialDirection = spatialDirection,
+                instrumentSeparation = instrumentSeparation
             )
+        }
+
+        fun save(context: Context, settings: EqualizerSettings) {
+            settings.save(context)
         }
     }
 
@@ -388,7 +409,13 @@ data class EqualizerSettings(
             putBoolean("v4a_cure_enabled", isAuditoryProtectionEnabled)
             putBoolean("v4a_spk_enabled", isSpeakerOptEnabled)
             putBoolean("v4a_transducer_autotune_enabled", isTransducerAutoTuneEnabled)
+            putBoolean("v4a_spatial_enabled", isSpatialAudioEnabled)
+            putInt("v4a_spatial_mode", spatialAudioMode)
+            putInt("v4a_spatial_angle", spatialAudioAngle)
+            putInt("v4a_spatial_direction", spatialDirection)
+            putInt("v4a_spatial_instrument_sep", instrumentSeparation)
             apply()
         }
     }
 }
+

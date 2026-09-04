@@ -164,14 +164,15 @@ fun MainScreen(
                             isRefreshing = true
                             try {
                                 val rebootIntent = android.content.Intent(context, com.example.antigravityeq.AudioEffectsService::class.java).apply {
-                                    action = "com.example.antigravityeq.REBOOT_STREAM"
+                                    action = com.example.antigravityeq.AudioEffectsService.ACTION_REBOOT_ENGINE
                                 }
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                                     context.startForegroundService(rebootIntent)
                                 } else {
                                     context.startService(rebootIntent)
                                 }
-                                android.widget.Toast.makeText(context, "⚡ Audio Engine & Stream Hook Refreshed!", android.widget.Toast.LENGTH_SHORT).show()
+                                viewModel.refreshSession()
+                                android.widget.Toast.makeText(context, "⚡ Audio Engine & Stream Hooks Refreshed!", android.widget.Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
                                 android.util.Log.e("MainScreen", "Error triggering audio stream reboot", e)
                             }
@@ -650,6 +651,59 @@ fun MainScreen(
                         onValueChange = { v -> viewModel.updateSettings { s -> s.copy(headphoneSurroundLevel = v) } },
                         valueRange = 0..5
                     )
+                }
+
+                // 10. 3D Spatial Audio Matrix (Cinema, Concert Hall & 360° Sphere Immersion)
+                EffectCard(
+                    badgeText = "3D",
+                    name = "3D spatial audio matrix (Sphere / Atmos / Stage)",
+                    enabled = settings.isSpatialAudioEnabled,
+                    onEnabledChange = { viewModel.updateSettings { s -> s.copy(isSpatialAudioEnabled = it) } }
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ValuePicker(
+                            title = "Spatial Immersion Mode",
+                            values = arrayOf(
+                                "360° Holographic Sphere",
+                                "Dolby Atmos Cinema Stage",
+                                "Concert Hall Immersion"
+                            ),
+                            selectedIndex = settings.spatialAudioMode,
+                            onSelectedIndexChange = { idx ->
+                                viewModel.updateSettings { s -> s.copy(spatialAudioMode = idx) }
+                            }
+                        )
+                        ValuePicker(
+                            title = "Instrument Directional Azimuth (Sound Arrival)",
+                            values = arrayOf(
+                                "Orbiting Holographic Multi-Angle",
+                                "Front-Center 180° Panorama (Anchored Vocals + Wide Wings)",
+                                "Side & Rear Binaural Hemispheres",
+                                "Overhead 3D Elevation"
+                            ),
+                            selectedIndex = settings.spatialDirection,
+                            onSelectedIndexChange = { idx ->
+                                viewModel.updateSettings { s -> s.copy(spatialDirection = idx) }
+                            }
+                        )
+                        ValueSlider(
+                            title = "Virtual speaker separation angle",
+                            summary = "${settings.spatialAudioAngle}°",
+                            value = settings.spatialAudioAngle,
+                            onValueChange = { v -> viewModel.updateSettings { s -> s.copy(spatialAudioAngle = v) } },
+                            valueRange = 30..180
+                        )
+                        ValueSlider(
+                            title = "Instrument spatial separation",
+                            summary = "${settings.instrumentSeparation}%",
+                            value = settings.instrumentSeparation,
+                            onValueChange = { v -> viewModel.updateSettings { s -> s.copy(instrumentSeparation = v) } },
+                            valueRange = 0..100
+                        )
+                    }
                 }
 
                 // ========================================================

@@ -1,5 +1,6 @@
 package com.example.antigravityeq.ui.component
 
+import com.example.antigravityeq.AudioEffectsService
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
@@ -108,14 +109,12 @@ fun InteractiveBassCurveGraph(
                     else -> 0.15f * w // Subwoofer - steep sub peak
                 }
                 
-                // LAYER 1.5: LIVE REAL-TIME SUB-BASS ACOUSTIC PRESSURE WAVEFORM UNDERLAY
+                // LAYER 1.5: LIVE REAL-TIME MOVING BACKGROUND CONTOUR LINE
                 val liveFft = com.example.antigravityeq.AudioEffectsService.liveFftLevels
                 val liveBassEnergy = ((liveFft.getOrElse(0) { -12f } + liveFft.getOrElse(1) { -12f }) / 2f + 12f) / 24f
                 val subWavePath = Path()
-                val subFillPath = Path()
-                subFillPath.moveTo(0f, h)
 
-                val subWaveSteps = 30
+                val subWaveSteps = 40
                 for (s in 0..subWaveSteps) {
                     val wx = (s.toFloat() / subWaveSteps) * w
                     val distW = abs(wx - centerX)
@@ -124,30 +123,15 @@ fun InteractiveBassCurveGraph(
 
                     if (s == 0) {
                         subWavePath.moveTo(wx, waveY)
-                        subFillPath.lineTo(wx, waveY)
                     } else {
                         subWavePath.lineTo(wx, waveY)
-                        subFillPath.lineTo(wx, waveY)
                     }
                 }
-                subFillPath.lineTo(w, h)
-                subFillPath.close()
 
-                drawPath(
-                    path = subFillPath,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            primaryColor.copy(alpha = 0.20f),
-                            primaryColor.copy(alpha = 0.04f),
-                            Color.Transparent
-                        ),
-                        startY = 0f,
-                        endY = h
-                    )
-                )
+                // Clean Moving Background Contour Line
                 drawPath(
                     path = subWavePath,
-                    color = primaryColor.copy(alpha = 0.35f),
+                    color = onSurfaceVariantColor.copy(alpha = 0.50f),
                     style = Stroke(width = 1.8f, cap = StrokeCap.Round)
                 )
                 
@@ -515,14 +499,12 @@ fun InteractiveClarityCurveGraph(
                     )
                 }
                 
-                // LAYER 1.5: LIVE REAL-TIME HIGH-FREQUENCY AIR SHIMMER UNDERLAY
+                // LAYER 1.5: LIVE REAL-TIME MOVING BACKGROUND CONTOUR LINE
                 val liveFft = com.example.antigravityeq.AudioEffectsService.liveFftLevels
                 val liveHighEnergy = ((liveFft.getOrElse(8) { -12f } + liveFft.getOrElse(9) { -12f }) / 2f + 12f) / 24f
                 val airWavePath = Path()
-                val airFillPath = Path()
-                airFillPath.moveTo(0f, h)
 
-                val airSteps = 30
+                val airSteps = 40
                 for (s in 0..airSteps) {
                     val ax = (s.toFloat() / airSteps) * w
                     val normProgress = (s.toFloat() / airSteps)
@@ -531,30 +513,15 @@ fun InteractiveClarityCurveGraph(
 
                     if (s == 0) {
                         airWavePath.moveTo(ax, airY)
-                        airFillPath.lineTo(ax, airY)
                     } else {
                         airWavePath.lineTo(ax, airY)
-                        airFillPath.lineTo(ax, airY)
                     }
                 }
-                airFillPath.lineTo(w, h)
-                airFillPath.close()
 
-                drawPath(
-                    path = airFillPath,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            primaryColor.copy(alpha = 0.20f),
-                            primaryColor.copy(alpha = 0.04f),
-                            Color.Transparent
-                        ),
-                        startY = 0f,
-                        endY = h
-                    )
-                )
+                // Clean Moving Background Contour Line
                 drawPath(
                     path = airWavePath,
-                    color = primaryColor.copy(alpha = 0.35f),
+                    color = onSurfaceVariantColor.copy(alpha = 0.50f),
                     style = Stroke(width = 1.8f, cap = StrokeCap.Round)
                 )
 

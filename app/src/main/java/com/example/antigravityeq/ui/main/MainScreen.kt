@@ -99,7 +99,9 @@ fun MainScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "• Google Material 3 Dynamic Theming (adapts to wallpaper palettes)\n• Externalized dB & Hz graph axes for clean visual curves\n• Brushed titanium rotary dial interface & tactile haptics",
+                        text = "• Google Material 3 Dynamic Theming (adapts to wallpaper palettes)
+• Externalized dB & Hz graph axes for clean visual curves
+• Brushed titanium rotary dial interface & tactile haptics",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -113,7 +115,10 @@ fun MainScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "• Denver Colaco: Lead Architect, Creator & Project Vision\n• J.A.R.V.I.S.: Lead Architect & Systems Integrity\n• VECTOR: UI/UX, Motion & Adaptive Icon Design\n• CIPHER: 32-bit DSP Engine & Shizuku Interception",
+                        text = "• Denver Colaco: Lead Architect, Creator & Project Vision
+• J.A.R.V.I.S.: Lead Architect & Systems Integrity
+• VECTOR: UI/UX, Motion & Adaptive Icon Design
+• CIPHER: 32-bit DSP Engine & Shizuku Interception",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -514,7 +519,78 @@ fun MainScreen(
                     }
                 }
 
-                // 4. Analog Tube Simulator
+                // 4. Dedicated Distortion / Waveshaper
+                EffectCard(
+                    badgeText = "DIST",
+                    name = "Distortion / waveshaper",
+                    enabled = settings.isDistortionEnabled,
+                    onEnabledChange = { viewModel.updateSettings { s -> s.copy(isDistortionEnabled = it) } }
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        ValuePicker(
+                            title = "Waveshape",
+                            values = arrayOf(
+                                "Soft clip", "Hard clip", "Tanh saturation",
+                                "Foldback", "Rectify", "Asymmetric"
+                            ),
+                            selectedIndex = settings.distortionMode.coerceIn(0, 5),
+                            onSelectedIndexChange = { idx ->
+                                viewModel.updateSettings { s -> s.copy(distortionMode = idx) }
+                            }
+                        )
+                        ValueSlider(
+                            title = "Drive",
+                            summary = "${settings.distortionDrive} dB",
+                            value = settings.distortionDrive,
+                            onValueChange = { v -> viewModel.updateSettings { s -> s.copy(distortionDrive = v) } },
+                            valueRange = 0..48
+                        )
+                        ValueSlider(
+                            title = "Wet / dry",
+                            summary = "${settings.distortionMix}%",
+                            value = settings.distortionMix,
+                            onValueChange = { v -> viewModel.updateSettings { s -> s.copy(distortionMix = v) } },
+                            valueRange = 0..100
+                        )
+                        ValueSlider(
+                            title = "Tone",
+                            summary = "${settings.distortionTone} Hz",
+                            value = settings.distortionTone,
+                            onValueChange = { v -> viewModel.updateSettings { s -> s.copy(distortionTone = v) } },
+                            valueRange = 200..20000
+                        )
+                        ValueSlider(
+                            title = "Output",
+                            summary = "${settings.distortionOutput} dB",
+                            value = settings.distortionOutput,
+                            onValueChange = { v -> viewModel.updateSettings { s -> s.copy(distortionOutput = v) } },
+                            valueRange = -12..6
+                        )
+                        ValueSlider(
+                            title = "Bias",
+                            summary = "${settings.distortionAsymmetry}%",
+                            value = settings.distortionAsymmetry,
+                            onValueChange = { v -> viewModel.updateSettings { s -> s.copy(distortionAsymmetry = v) } },
+                            valueRange = -100..100
+                        )
+                        ValueSlider(
+                            title = "Dynamics",
+                            summary = "${settings.distortionDynamics}%",
+                            value = settings.distortionDynamics,
+                            onValueChange = { v -> viewModel.updateSettings { s -> s.copy(distortionDynamics = v) } },
+                            valueRange = 0..100
+                        )
+                        ValueSlider(
+                            title = "Stereo spread",
+                            summary = "${settings.distortionSpread}%",
+                            value = settings.distortionSpread,
+                            onValueChange = { v -> viewModel.updateSettings { s -> s.copy(distortionSpread = v) } },
+                            valueRange = 0..100
+                        )
+                    }
+                }
+
+                // 5. Analog Tube Simulator
                 EffectCard(
                     badgeText = "TUBE",
                     name = "Analog tube simulator (6N1P / 12AX7)",

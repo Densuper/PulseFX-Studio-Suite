@@ -1,0 +1,11 @@
+<!-- Merge these sections into the device's vendor/etc/audio_effects.xml. -->
+<audio_effects>
+    <libraries>
+        <library name="pulsefx_distortion" path="libpulsefx_distortion.so" />
+    </libraries>
+    <effects>
+        <effect name="pulsefx_distortion"
+                library="pulsefx_distortion"
+                uuid="7e4e3b7a-1e20-4f74-8f4e-9e9d5f3e9c01" />
+    </effects>
+</audio_effects>

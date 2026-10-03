@@ -20,6 +20,8 @@ import kotlin.math.*
  */
 class ViperDspProcessor(private val sampleRate: Int = 48000) {
 
+    private val distortionProcessor = DistortionProcessor(sampleRate)
+
     // Standard ViPER4Android 10-Band EQ Frequencies & Q
     private val bandFrequencies = floatArrayOf(31f, 62f, 125f, 250f, 500f, 1000f, 2000f, 4000f, 8000f, 16000f)
     private val qFactor = 1.414f
@@ -533,7 +535,25 @@ class ViperDspProcessor(private val sampleRate: Int = 48000) {
                 right = right * dry + revWetR * wet
             }
 
-            // 11. Analog Tube Simulator (6N1P / 12AX7 Dual-Triode Soft-Knee Saturation)
+            // 11. Dedicated Distortion / Waveshaper
+            if (s.isDistortionEnabled && s.distortionDrive > 0) {
+                val mode = DistortionProcessor.Mode.values().getOrElse(s.distortionMode.coerceIn(0, 5)) { DistortionProcessor.Mode.SOFT_CLIP }
+                val distorted = distortionProcessor.processStereo(
+                    left, right,
+                    s.distortionDrive.toFloat(),
+                    s.distortionMix.toFloat(),
+                    s.distortionTone.toFloat(),
+                    s.distortionOutput.toFloat(),
+                    s.distortionAsymmetry.toFloat(),
+                    mode,
+                    s.distortionDynamics.toFloat(),
+                    s.distortionSpread.toFloat()
+                )
+                left = distorted.first
+                right = distorted.second
+            }
+
+            // 12. Analog Tube Simulator (6N1P / 12AX7 Dual-Triode Soft-Knee Saturation)
             if (s.isTubeEnabled && tubeDrive > 1f) {
                 left = (tanh(left * tubeDrive) + 0.08f * left * left * tubeWarmthNorm) / tubeDrive
                 right = (tanh(right * tubeDrive) + 0.08f * right * right * tubeWarmthNorm) / tubeDrive

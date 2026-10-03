@@ -20,6 +20,7 @@ import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.antigravityeq.data.EqualizerSettings
+import com.example.antigravityeq.data.NativeDistortionEffect
 import com.example.antigravityeq.data.TransducerDatabase
 import com.example.antigravityeq.data.TransducerSpec
 import java.util.concurrent.ConcurrentHashMap
@@ -67,7 +68,8 @@ class AudioEffectsService : Service() {
         var presetReverb: PresetReverb? = null,
         var environmentalReverb: EnvironmentalReverb? = null,
         var loudnessEnhancer: LoudnessEnhancer? = null,
-        var visualizer: android.media.audiofx.Visualizer? = null
+        var visualizer: android.media.audiofx.Visualizer? = null,
+        var nativeDistortion: NativeDistortionEffect? = null
     ) {
         fun release() {
             try {
@@ -105,6 +107,11 @@ class AudioEffectsService : Service() {
                 loudnessEnhancer?.release()
             } catch (e: Exception) {
                 Log.e(TAG, "Error releasing loudnessEnhancer", e)
+            }
+            try {
+                nativeDistortion?.close()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error releasing native distortion", e)
             }
         }
     }
@@ -215,6 +222,15 @@ class AudioEffectsService : Service() {
                 } catch (e: Exception) {
                     Log.w(TAG, "LoudnessEnhancer unavailable for session $sessionId: $e")
                 }
+            }
+
+            try {
+                // This is a real AudioFlinger effect, not a Kotlin-side buffer
+                // transform. Devices must register the native library and UUID;
+                // unsupported devices are allowed to continue with other effects.
+                effects.nativeDistortion = NativeDistortionEffect(sessionId)
+            } catch (e: Exception) {
+                Log.w(TAG, "Native distortion unavailable for session $sessionId: $e")
             }
 
             // Visualizer removed by user request for 100% privacy compliance.
@@ -850,7 +866,18 @@ class AudioEffectsService : Service() {
                 }
             }
 
-            // 2. ViPER Bass Hardware Stage:
+            // 2. Dedicated distortion AudioEffect. The native effect owns the
+            // sample callback; this service only sends its control parameters.
+            val nativeDistortion = effects.nativeDistortion
+            if (nativeDistortion != null) {
+                try {
+                    nativeDistortion.configure(currentSettings, isEnabled)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error setting native distortion params: $e")
+                }
+            }
+
+            // 3. ViPER Bass Hardware Stage:
             // Android's native `android.media.audiofx.BassBoost` uses an uncalibrated, ultra-wide low-shelf
             // that spills into 300Hz-400Hz (vocal midrange) and triggers system-level AGC ducking on the master track.
             // In PulseFX Studio, ViPER Bass is synthesized 100% cleanly through our isolated sub-bass biquad filters (<120Hz).
@@ -1037,12 +1064,12 @@ class AudioEffectsService : Service() {
         var anyEffectEngaged = false
         for (effects in activeSessions.values) {
             applySettingsToSession(effects)
-            if (effects.equalizer?.enabled == true || effects.bassBoost?.enabled == true || effects.virtualizer?.enabled == true || effects.presetReverb?.enabled == true || effects.loudnessEnhancer?.enabled == true) {
+            if (effects.equalizer?.enabled == true || effects.bassBoost?.enabled == true || effects.virtualizer?.enabled == true || effects.presetReverb?.enabled == true || effects.loudnessEnhancer?.enabled == true || effects.nativeDistortion?.isEnabled == true) {
                 anyEffectEngaged = true
             }
         }
 
-        // Comprehensive 18-Module State Hash to trigger chime whenever ANY module switch flips ON
+        // Comprehensive module state hash to trigger chime whenever ANY module switch flips ON
         val currentModulesHash = (if (currentSettings.isEnabled) 1 else 0) or
             ((if (currentSettings.isEqEnabled) 1 else 0) shl 1) or
             ((if (currentSettings.isBassEnabled) 1 else 0) shl 2) or
@@ -1061,7 +1088,8 @@ class AudioEffectsService : Service() {
             ((if (currentSettings.isSpeakerOptEnabled) 1 else 0) shl 15) or
             ((if (currentSettings.isPlaybackAgcEnabled) 1 else 0) shl 16) or
             ((if (currentSettings.isFetCompressorEnabled) 1 else 0) shl 17) or
-            ((if (currentSettings.isSpatialAudioEnabled) 1 else 0) shl 18)
+            ((if (currentSettings.isSpatialAudioEnabled) 1 else 0) shl 18) or
+            ((if (currentSettings.isDistortionEnabled) 1 else 0) shl 19)
 
         // Only play confirmation chime when an effect SWITCH is physically turned ON, NEVER on slider dragging
         if (anyEffectEngaged && currentSettings.isEnabled && (!lastEngagedState || currentModulesHash != lastEnabledModulesHash)) {

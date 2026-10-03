@@ -26,7 +26,7 @@
 
 ## 🚀 Overview
 
-**PulseFX Studio** is a complete, ground-up reimagining of Android audio signal processing. While inspired by the legendary acoustic concepts of **ViPER's Audio**, PulseFX Studio eliminates legacy C++ kernel driver dependencies in favor of a high-precision **32-bit floating-point DSP engine** that works across **all media (YouTube, Spotify, Apple Music, Games, Web Audio)** without requiring screen capture or intrusive permissions.
+**PulseFX Studio** is a complete, ground-up reimagining of Android audio signal processing. While inspired by the legendary acoustic concepts of **ViPER's Audio**, PulseFX Studio uses a high-precision **32-bit floating-point DSP engine** and Android AudioEffect integration. The dedicated nonlinear stages require the accompanying native AudioEffect to be registered by the device/ROM; an ordinary APK cannot install an AudioFlinger effect library on stock Android. See [`native/README.md`](native/README.md) for the platform integration steps.
 
 Built around our **"10 + Additive Boost" Standard**, the original track is preserved at full fidelity (10/10 master) with zero defensive pre-attenuation or muffling cuts. Using **Logarithmic Hardware Frequency Interpolation**, all 10 virtual studio bands cleanly project onto Android hardware bands without discarding vocal clarity or high-end air.
 
